@@ -1,0 +1,57 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.logo-navbar {
+  max-height: 32px;
+  width: auto;
+}
+
+.summary-card {
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.summary-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.table-movimientos-wrapper {
+  width: 100%;
+  max-height: 70vh;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.badge-tipo-ingreso {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.badge-tipo-egreso {
+  background: #ffebee;
+  color: #b71c1c;
+}
+
+#movTable .btn i {
+  font-size: 0.9rem;
+}
+
+@media (max-width: 767.98px) {
+  .table-movimientos-wrapper {
+    max-height: none;
+  }
+
+  .navbar-brand span {
+    font-size: 0.95rem;
+  }
+}

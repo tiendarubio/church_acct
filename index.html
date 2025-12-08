@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChurchAcct — Misión Pentecostal de Jesucristo</title>
+
+  <!-- Bootstrap & FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+
+  <!-- Estilos propios -->
+  <link href="assets/css/styles.css" rel="stylesheet">
+
+  <!-- Librerías JS externas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body class="bg-light">
+
+  <!-- TOP NAVBAR -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <span class="fw-semibold">Misión Pentecostal de Jesucristo</span>
+      </a>
+
+      <div class="d-flex align-items-center gap-3 ms-auto">
+        <span class="text-white-50 small d-none d-md-inline">Contabilidad de eventos</span>
+        <span class="badge bg-secondary" id="lastSaved">
+          <i class="fa-solid fa-clock-rotate-left me-1"></i>
+          Aún no guardado.
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="container-fluid py-4">
+    <div class="row g-4">
+
+      <!-- PANEL IZQUIERDO: Filtros y resumen -->
+      <div class="col-xl-3 col-lg-4">
+        <!-- Card: Filtros -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white border-0 pb-0">
+            <h6 class="card-title mb-1">
+              <i class="fa-solid fa-sliders me-2 text-primary"></i>
+              Filtros
+            </h6>
+            <p class="text-muted small mb-0">Filtra por evento, tipo y rango de fechas.</p>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="filterEvento" class="form-label fw-semibold mb-1">Evento</label>
+              <input id="filterEvento" type="text" class="form-control form-control-sm" placeholder="Nombre del evento">
+            </div>
+            <div class="mb-3">
+              <label for="filterTipo" class="form-label fw-semibold mb-1">Tipo</label>
+              <select id="filterTipo" class="form-select form-select-sm">
+                <option value="TODOS">Todos</option>
+                <option value="INGRESO">Ingresos</option>
+                <option value="EGRESO">Egresos</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold mb-1">Rango de fechas</label>
+              <div class="d-flex gap-2">
+                <input id="filterDesde" type="date" class="form-control form-control-sm">
+                <input id="filterHasta" type="date" class="form-control form-control-sm">
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button id="btnApplyFilters" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-filter me-1"></i> Aplicar
+              </button>
+              <button id="btnClearFilters" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-eraser me-1"></i> Limpiar filtros
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Resumen -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-white border-0 pb-0">
+            <h6 class="card-title mb-1">
+              <i class="fa-solid fa-chart-column me-2 text-primary"></i>
+              Resumen
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="summary-card mb-2">
+              <div class="summary-label">Ingresos</div>
+              <div id="totalIngresos" class="summary-value">$ 0.00</div>
+            </div>
+            <div class="summary-card mb-2">
+              <div class="summary-label">Egresos</div>
+              <div id="totalEgresos" class="summary-value">$ 0.00</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Saldo</div>
+              <div id="saldo" class="summary-value">$ 0.00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL DERECHO: Formulario + Movimientos -->
+      <div class="col-xl-9 col-lg-8">
+
+        <!-- Card: Registrar movimiento -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white border-0">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <h6 class="card-title mb-1">
+                  <i class="fa-solid fa-file-invoice-dollar me-2 text-primary"></i>
+                  Registrar movimiento
+                </h6>
+                <p class="text-muted small mb-0">Registra ingresos y egresos por evento.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body border-top">
+            <div class="row g-3">
+              <div class="col-md-3 col-sm-6">
+                <label for="movFecha" class="form-label fw-semibold mb-1">Fecha</label>
+                <input id="movFecha" type="date" class="form-control form-control-sm">
+              </div>
+              <div class="col-md-5 col-sm-6">
+                <label for="movEvento" class="form-label fw-semibold mb-1">Evento</label>
+                <input id="movEvento" type="text" class="form-control form-control-sm" placeholder="Ej. Vigilia de Jóvenes">
+              </div>
+              <div class="col-md-2 col-sm-6">
+                <label for="movTipo" class="form-label fw-semibold mb-1">Tipo</label>
+                <select id="movTipo" class="form-select form-select-sm">
+                  <option value="INGRESO" selected>Ingreso</option>
+                  <option value="EGRESO">Egreso</option>
+                </select>
+              </div>
+              <div class="col-md-2 col-sm-6">
+                <label for="movMonto" class="form-label fw-semibold mb-1">Monto</label>
+                <input id="movMonto" type="number" min="0" step="0.01" class="form-control form-control-sm" placeholder="0.00">
+              </div>
+
+              <div class="col-md-4 col-sm-6">
+                <label for="movCategoria" class="form-label fw-semibold mb-1">Categoría</label>
+                <select id="movCategoria" class="form-select form-select-sm">
+                  <option value="">Seleccione…</option>
+                </select>
+              </div>
+              <div class="col-md-4 col-sm-6">
+                <label for="movMetodo" class="form-label fw-semibold mb-1">Método de pago</label>
+                <select id="movMetodo" class="form-select form-select-sm">
+                  <option value="Efectivo" selected>Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Depósito">Depósito</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div class="col-md-4 col-sm-12">
+                <label for="movResponsable" class="form-label fw-semibold mb-1">Responsable</label>
+                <input id="movResponsable" type="text" class="form-control form-control-sm" placeholder="Nombre del encargado">
+              </div>
+
+              <div class="col-12">
+                <label for="movDescripcion" class="form-label fw-semibold mb-1">Descripción</label>
+                <input id="movDescripcion" type="text" class="form-control form-control-sm" placeholder="Detalle del movimiento">
+              </div>
+              <div class="col-12">
+                <label for="movNota" class="form-label fw-semibold mb-1">Nota / referencia (opcional)</label>
+                <input id="movNota" type="text" class="form-control form-control-sm" placeholder="No. de factura, recibo, comentario, etc.">
+              </div>
+            </div>
+
+            <div class="mt-3 d-flex justify-content-end">
+              <button id="btnAddMovement" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-plus me-1"></i> Agregar a la tabla
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Movimientos -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-white border-0">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <h6 class="card-title mb-1">
+                  <i class="fa-solid fa-list-check me-2 text-primary"></i>
+                  Movimientos registrados
+                </h6>
+                <p class="text-muted small mb-0">Listado de ingresos y egresos filtrados.</p>
+              </div>
+
+              <!-- Toolbar -->
+              <div class="btn-toolbar gap-2" role="toolbar" aria-label="Toolbar">
+                <button id="btnSave" class="btn btn-primary btn-sm">
+                  <i class="fa-solid fa-floppy-disk me-1"></i> Guardar
+                </button>
+                <button id="btnPDF" class="btn btn-outline-danger btn-sm">
+                  <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                </button>
+                <button id="btnExcel" class="btn btn-outline-success btn-sm">
+                  <i class="fa-solid fa-file-excel me-1"></i> Excel
+                </button>
+                <button id="btnClear" class="btn btn-outline-secondary btn-sm">
+                  <i class="fa-solid fa-trash-can me-1"></i> Limpiar todo
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body border-top">
+            <div class="table-responsive table-movimientos-wrapper">
+              <table class="table table-sm table-bordered align-middle mb-0" id="movTable">
+                <thead class="table-light">
+                  <tr>
+                    <th class="text-center" style="width: 48px;">#</th>
+                    <th class="text-nowrap">Fecha</th>
+                    <th>Evento</th>
+                    <th class="text-nowrap">Tipo</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
+                    <th class="text-end text-nowrap">Monto</th>
+                    <th class="text-nowrap">Método</th>
+                    <th>Responsable</th>
+                    <th class="text-center text-nowrap">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="movBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /col derecha -->
+    </div><!-- /row -->
+  </main>
+
+  <!-- SweetAlert + JS de la app -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/church.js"></script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
