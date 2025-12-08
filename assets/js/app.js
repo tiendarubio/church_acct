@@ -1,6 +1,5 @@
 // app.js — Helpers para JSONBin y Google Sheets (categorías de iglesia)
 
-// Carga categorías de ingresos y egresos desde Google Sheets (hoja church_data)
 function loadChurchCategories() {
   return fetch('/api/church-data')
     .then(r => {
@@ -13,7 +12,6 @@ function loadChurchCategories() {
     });
 }
 
-// JSONBin helpers a través de rutas de API en Vercel
 function saveToBin(binId, payload) {
   if (!binId) {
     return Promise.reject(new Error('BIN no configurado.'));
@@ -45,7 +43,6 @@ function loadFromBin(binId) {
     });
 }
 
-// Formatear fecha/hora a formato ES-SV
 function formatSV(iso) {
   if (!iso) return 'Aún no guardado.';
   try {

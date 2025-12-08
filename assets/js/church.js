@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     movCategoria.innerHTML = '';
     const optDefault = document.createElement('option');
     optDefault.value = '';
-    optDefault.textContent = 'Seleccione…';
+    optDefault.textContent = source.length ? 'Seleccione una categoría…' : 'Sin categorías disponibles';
     movCategoria.appendChild(optDefault);
 
     source.forEach(cat => {
@@ -220,21 +220,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const descripcion = (movDescripcion.value || '').trim();
     const nota = (movNota.value || '').trim();
 
-    if (!fecha) {
-      throw new Error('La fecha es obligatoria.');
-    }
-    if (!tipo) {
-      throw new Error('El tipo es obligatorio.');
-    }
-    if (!categoria) {
-      throw new Error('La categoría es obligatoria.');
-    }
-    if (!monto || monto <= 0) {
-      throw new Error('El monto debe ser mayor que 0.');
-    }
-    if (!descripcion) {
-      throw new Error('La descripción es obligatoria.');
-    }
+    if (!fecha) throw new Error('La fecha es obligatoria.');
+    if (!tipo) throw new Error('El tipo es obligatorio.');
+    if (!categoria) throw new Error('La categoría es obligatoria.');
+    if (!monto || monto <= 0) throw new Error('El monto debe ser mayor que 0.');
+    if (!descripcion) throw new Error('La descripción es obligatoria.');
 
     const nextId = movimientos.length
       ? Math.max(...movimientos.map(m => m.id || 0)) + 1
@@ -392,7 +382,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     Swal.fire('Éxito', 'Se generó el Excel.', 'success');
   }
 
-  // ========= Inicialización =========
   try {
     setToday();
     const cats = await loadChurchCategories();
@@ -425,8 +414,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Error inicializando aplicación:', e);
     Swal.fire('Error', 'No se pudieron cargar los datos iniciales.', 'error');
   }
-
-  // ========= Event Listeners =========
 
   movTipo.addEventListener('change', () => {
     refreshCategoriaOptions();
@@ -470,7 +457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       text: 'Se eliminarán todos los registros de la tabla y de la base de datos.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Limpiar todo',
+      confirmButtonText: 'Limpiar todos',
       cancelButtonText: 'Cancelar'
     }).then(async res => {
       if (res.isConfirmed) {
