@@ -8,359 +8,367 @@ document.addEventListener('DOMContentLoaded', async () => {
   const categoriaSelect  = $('categoriaSelect');
   const montoInput       = $('montoInput');
   const descripcionInput = $('descripcionInput');
+  const btnAgregar       = $('btnAgregar');
 
-  const btnAddEntry  = $('btnAddEntry');
-  const btnSaveAll   = $('btnSaveAll');
-  const btnPDF       = $('btnPDF');
-  const btnExcel     = $('btnExcel');
-  const btnClearAll  = $('btnClearAll');
+  const movBody          = $('movBody');
+  const totalIngresosEl  = $('totalIngresos');
+  const totalEgresosEl   = $('totalEgresos');
+  const saldoEl          = $('saldo');
+  const lastSavedEl      = $('lastSaved');
+  const msgCategorias    = $('msgCategorias');
 
-  const movBody      = $('movBody');
-  const sumIngresos  = $('sumIngresos');
-  const sumEgresos   = $('sumEgresos');
-  const sumSaldo     = $('sumSaldo');
-  const lastSaved    = $('lastSaved');
+  const btnGuardar       = $('btnGuardar');
+  const btnPDF           = $('btnPDF');
+  const btnExcel         = $('btnExcel');
+  const btnLimpiar       = $('btnLimpiar');
 
-  // Estado en memoria
-  let ledger = []; // {id, date, event, type, category, description, amount}
-  let lastUpdateISO = null;
+  const today = new Date().toISOString().split('T')[0];
+  fechaInput.value = today;
 
-  // --- Fecha por defecto: hoy ---
-  const hoy = new Date().toISOString().split('T')[0];
-  fechaInput.value = hoy;
+  function parseNum(v) {
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+  function fix2(n) {
+    return Math.round(n * 100) / 100;
+  }
 
-  // --- Cargar categorías desde Sheets ---
-  await loadChurchCategories();
-  updateCategorySelect();
+  // --- Cargar categorías desde backend ---
+  async function initCategorias() {
+    try {
+      msgCategorias.style.display = 'none';
+      categoriaSelect.innerHTML = '<option value="">Cargando categorías...</option>';
 
-  // --- Manejar cambio de tipo (Ingreso / Egreso) ---
-  function updateCategorySelect() {
-    const tipo = getSelectedType();
+      const { incomes, expenses } = await loadChurchCategories();
+      if (!incomes.length && !expenses.length) {
+        categoriaSelect.innerHTML = '<option value="">No se encontraron categorías en church_data</option>';
+        msgCategorias.textContent = 'Revise la hoja "church_data": columna A (ingresos) y columna B (egresos), desde la fila 2.';
+        msgCategorias.style.display = 'block';
+        return;
+      }
+      // Por defecto se muestran ingresos (porque el toggle inicia en ingreso)
+      fillCategoriaOptions('ingreso');
+    } catch (err) {
+      categoriaSelect.innerHTML = '<option value="">No se pudieron cargar las categorías</option>';
+      msgCategorias.textContent = 'No se pudo conectar con /api/church-data. Revise las variables de entorno en Vercel.';
+      msgCategorias.style.display = 'block';
+    }
+  }
+
+  function fillCategoriaOptions(tipo) {
     categoriaSelect.innerHTML = '';
-
-    if (!tipo) {
-      categoriaSelect.disabled = true;
+    const list = (tipo === 'ingreso') ? CHURCH_INCOME_CATEGORIES : CHURCH_EXPENSE_CATEGORIES;
+    if (!list || !list.length) {
       const opt = document.createElement('option');
       opt.value = '';
-      opt.textContent = 'Seleccione tipo primero…';
+      opt.textContent = 'No hay categorías configuradas para ' + (tipo === 'ingreso' ? 'ingresos' : 'egresos');
       categoriaSelect.appendChild(opt);
       return;
     }
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = 'Seleccione una categoría';
+    categoriaSelect.appendChild(opt0);
 
-    categoriaSelect.disabled = false;
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = 'Seleccione categoría…';
-    categoriaSelect.appendChild(placeholder);
-
-    const list = (tipo === 'ingreso') ? CHURCH_INCOME_CATS : CHURCH_EXPENSE_CATS;
-    list.forEach(cat => {
+    list.forEach((c) => {
       const opt = document.createElement('option');
-      opt.value = cat;
-      opt.textContent = cat;
+      opt.value = c;
+      opt.textContent = c;
       categoriaSelect.appendChild(opt);
     });
   }
 
-  function getSelectedType() {
-    if (tipoIngresoRadio.checked) return 'ingreso';
-    if (tipoEgresoRadio.checked)  return 'egreso';
-    return '';
+  tipoIngresoRadio.addEventListener('change', () => {
+    if (tipoIngresoRadio.checked) fillCategoriaOptions('ingreso');
+  });
+  tipoEgresoRadio.addEventListener('change', () => {
+    if (tipoEgresoRadio.checked) fillCategoriaOptions('egreso');
+  });
+
+  await initCategorias();
+
+  // --- Manejo de tabla ---
+  function renumber() {
+    [...movBody.getElementsByTagName('tr')].forEach((row, idx) => {
+      row.cells[0].textContent = idx + 1;
+    });
   }
 
-  tipoIngresoRadio.addEventListener('change', updateCategorySelect);
-  tipoEgresoRadio.addEventListener('change', updateCategorySelect);
+  function recalcTotals() {
+    let ingresos = 0;
+    let egresos  = 0;
 
-  // --- Añadir movimiento desde el formulario ---
-  btnAddEntry.addEventListener('click', () => {
-    const fecha   = (fechaInput.value || '').trim();
-    const evento  = (eventoInput.value || '').trim();
-    const tipo    = getSelectedType();
-    const cat     = (categoriaSelect.value || '').trim();
-    const monto   = parseFloat(montoInput.value);
-    const desc    = (descripcionInput.value || '').trim();
+    [...movBody.getElementsByTagName('tr')].forEach((tr) => {
+      const tipo  = tr.dataset.tipo || '';
+      const monto = parseNum(tr.dataset.monto || tr.cells[5].innerText.replace(/[^\d.-]/g, ''));
+      if (tipo === 'ingreso') ingresos += monto;
+      else if (tipo === 'egreso') egresos += monto;
+    });
 
-    if (!fecha) {
-      Swal.fire('Fecha requerida', 'Seleccione la fecha del movimiento.', 'info');
-      return;
+    ingresos = fix2(ingresos);
+    egresos  = fix2(egresos);
+    const saldo = fix2(ingresos - egresos);
+
+    totalIngresosEl.textContent = '$' + ingresos.toFixed(2);
+    totalEgresosEl.textContent  = '$' + egresos.toFixed(2);
+
+    saldoEl.textContent = '$' + saldo.toFixed(2);
+    saldoEl.classList.remove('text-success', 'text-danger');
+    if (saldo >= 0) saldoEl.classList.add('text-success');
+    else saldoEl.classList.add('text-danger');
+  }
+
+  function addRowFromData(item) {
+    const tr = document.createElement('tr');
+    tr.dataset.tipo  = item.tipo || '';
+    tr.dataset.monto = item.monto != null ? String(item.monto) : '0';
+
+    const tipoLabel = item.tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
+    const tipoBadgeClass = item.tipo === 'ingreso' ? 'bg-success' : 'bg-danger';
+
+    tr.innerHTML = `
+      <td class="text-center"></td>
+      <td>${item.fecha || ''}</td>
+      <td>${item.evento || ''}</td>
+      <td class="text-nowrap">
+        <span class="badge ${tipoBadgeClass}">${tipoLabel}</span>
+      </td>
+      <td>${item.categoria || ''}</td>
+      <td class="text-end">$${fix2(item.monto || 0).toFixed(2)}</td>
+      <td>${item.descripcion || ''}</td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-danger btn-delete" title="Eliminar">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    `;
+    movBody.appendChild(tr);
+    renumber();
+    recalcTotals();
+
+    const delBtn = tr.querySelector('.btn-delete');
+    delBtn.addEventListener('click', () => {
+      Swal.fire({
+        title: '¿Eliminar registro?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then((res) => {
+        if (res.isConfirmed) {
+          tr.remove();
+          renumber();
+          recalcTotals();
+        }
+      });
+    });
+  }
+
+  // --- Cargar datos guardados previamente en JSONBin ---
+  async function loadExistingData() {
+    const record = await loadChurchData();
+    if (record && Array.isArray(record.movimientos)) {
+      record.movimientos.forEach(addRowFromData);
+      if (record.meta && record.meta.updatedAt) {
+        lastSavedEl.innerHTML =
+          '<i class="fa-solid fa-clock-rotate-left me-1"></i> Última actualización: ' +
+          formatSV(record.meta.updatedAt);
+      }
     }
-    if (!evento) {
-      Swal.fire('Evento requerido', 'Escriba el evento o actividad (ej. Culto general).', 'info');
-      return;
-    }
-    if (!tipo) {
-      Swal.fire('Tipo requerido', 'Seleccione si es Ingreso o Egreso.', 'info');
-      return;
-    }
-    if (!cat) {
-      Swal.fire('Categoría requerida', 'Seleccione una categoría.', 'info');
-      return;
-    }
+    recalcTotals();
+  }
+
+  await loadExistingData();
+
+  // --- Agregar nuevo registro ---
+  function getSelectedTipo() {
+    return tipoIngresoRadio.checked ? 'ingreso' : 'egreso';
+  }
+
+  btnAgregar.addEventListener('click', () => {
+    const fecha = fechaInput.value || today;
+    const evento = eventoInput.value.trim();
+    const tipo = getSelectedTipo();
+    const categoria = categoriaSelect.value || '';
+    const monto = parseNum(montoInput.value);
+    const descripcion = descripcionInput.value.trim();
+
     if (!(monto > 0)) {
-      Swal.fire('Monto inválido', 'El monto debe ser mayor que 0.', 'warning');
+      Swal.fire('Monto requerido', 'Por favor ingrese un monto mayor a 0.', 'info');
+      montoInput.focus();
       return;
     }
 
-    const entry = {
-      id: Date.now().toString() + Math.random().toString(16).slice(2),
-      date: fecha,
-      event: evento,
-      type: tipo,
-      category: cat,
-      description: desc,
-      amount: Math.round(monto * 100) / 100
-    };
+    if (!categoria) {
+      Swal.fire('Categoría recomendada', 'Seleccione una categoría para llevar un mejor control.', 'info');
+      categoriaSelect.focus();
+      return;
+    }
 
-    ledger.push(entry);
-    renderTable();
-    updateSummary();
-    updateButtons();
+    const item = { fecha, evento, tipo, categoria, monto, descripcion };
+    addRowFromData(item);
 
-    // Mantener fecha y evento, limpiar el resto
+    eventoInput.value = '';
     montoInput.value = '';
     descripcionInput.value = '';
-    categoriaSelect.value = '';
-    montoInput.focus();
+    eventoInput.focus();
   });
 
-  function renderTable() {
-    movBody.innerHTML = '';
-    ledger.forEach((entry, idx) => {
-      const tr = document.createElement('tr');
-      const ingresoTxt = entry.type === 'ingreso' ? entry.amount.toFixed(2) : '';
-      const egresoTxt  = entry.type === 'egreso'  ? entry.amount.toFixed(2) : '';
-      tr.innerHTML = `
-        <td class="text-center">${idx + 1}</td>
-        <td>${entry.date}</td>
-        <td>${entry.event}</td>
-        <td class="text-capitalize">${entry.type}</td>
-        <td>${entry.category}</td>
-        <td>${entry.description || ''}</td>
-        <td class="text-end">${ingresoTxt}</td>
-        <td class="text-end">${egresoTxt}</td>
-        <td class="text-center">
-          <button class="btn btn-outline-danger btn-sm btn-delete-row" data-id="${entry.id}" title="Eliminar">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
-        </td>
-      `;
-      movBody.appendChild(tr);
+  // --- Guardar en JSONBin ---
+  btnGuardar.addEventListener('click', () => {
+    const movimientos = [...movBody.getElementsByTagName('tr')].map((tr) => {
+      const fecha = tr.cells[1].innerText.trim();
+      const evento = tr.cells[2].innerText.trim();
+      const tipoText = tr.dataset.tipo || (tr.cells[3].innerText.includes('Ingreso') ? 'ingreso' : 'egreso');
+      const categoria = tr.cells[4].innerText.trim();
+      const monto = parseNum(tr.dataset.monto || tr.cells[5].innerText.replace(/[^\d.-]/g, ''));
+      const descripcion = tr.cells[6].innerText.trim();
+      return { fecha, evento, tipo: tipoText, categoria, monto, descripcion };
     });
 
-    // Listeners para eliminar
-    movBody.querySelectorAll('.btn-delete-row').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        Swal.fire({
-          title: '¿Eliminar movimiento?',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Eliminar'
-        }).then(res => {
-          if (res.isConfirmed) {
-            ledger = ledger.filter(e => e.id !== id);
-            renderTable();
-            updateSummary();
-            updateButtons();
-          }
-        });
-      });
-    });
-  }
+    const totalIng = parseNum(totalIngresosEl.textContent.replace(/[^\d.-]/g, ''));
+    const totalEgr = parseNum(totalEgresosEl.textContent.replace(/[^\d.-]/g, ''));
+    const saldoVal = parseNum(saldoEl.textContent.replace(/[^\d.-]/g, ''));
 
-  function updateSummary() {
-    let totalIng = 0;
-    let totalEgr = 0;
-    ledger.forEach(e => {
-      if (e.type === 'ingreso') totalIng += e.amount;
-      else if (e.type === 'egreso') totalEgr += e.amount;
-    });
-    totalIng = Math.round(totalIng * 100) / 100;
-    totalEgr = Math.round(totalEgr * 100) / 100;
-    const saldo = Math.round((totalIng - totalEgr) * 100) / 100;
-
-    sumIngresos.textContent = totalIng.toFixed(2);
-    sumEgresos.textContent  = totalEgr.toFixed(2);
-    sumSaldo.textContent    = saldo.toFixed(2);
-
-    sumSaldo.classList.remove('positivo', 'negativo');
-    if (saldo > 0) {
-      sumSaldo.classList.add('positivo');
-    } else if (saldo < 0) {
-      sumSaldo.classList.add('negativo');
-    }
-  }
-
-  function updateButtons() {
-    const hasRows = ledger.length > 0;
-    btnPDF.disabled   = !hasRows;
-    btnExcel.disabled = !hasRows;
-    btnClearAll.disabled = !hasRows;
-  }
-
-  // --- Guardar todo en JSONBin ---
-  btnSaveAll.addEventListener('click', () => {
     const payload = {
       meta: {
-        church: 'Misión Pentecostal de Jesucristo',
+        iglesia: 'Misión Pentecostal de Jesucristo',
         updatedAt: new Date().toISOString()
       },
-      entries: ledger
+      movimientos,
+      totales: {
+        ingresos: fix2(totalIng),
+        egresos: fix2(totalEgr),
+        saldo: fix2(saldoVal)
+      }
     };
 
-    saveChurchToJSONBin(payload)
+    saveChurchData(payload)
       .then(() => {
-        lastUpdateISO = payload.meta.updatedAt;
-        if (lastSaved) {
-          lastSaved.innerHTML = '<i class="fa-solid fa-clock-rotate-left me-1"></i>' +
-            'Última actualización: ' + formatSV(lastUpdateISO);
-        }
-        Swal.fire('Guardado', 'Los movimientos se han guardado correctamente.', 'success');
+        lastSavedEl.innerHTML =
+          '<i class="fa-solid fa-clock-rotate-left me-1"></i> Última actualización: ' +
+          formatSV(payload.meta.updatedAt);
+        Swal.fire('Guardado', 'Los datos se guardaron correctamente.', 'success');
       })
-      .catch(err => {
-        Swal.fire('Error', String(err), 'error');
+      .catch((e) => {
+        console.error(e);
+        Swal.fire('Error', String(e), 'error');
       });
-  });
-
-  // --- Limpiar todo (y guardar vacío) ---
-  btnClearAll.addEventListener('click', () => {
-    if (!ledger.length) return;
-    Swal.fire({
-      title: '¿Limpiar todos los movimientos?',
-      text: 'Esto también guardará la lista vacía en la base de datos.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, limpiar'
-    }).then(res => {
-      if (res.isConfirmed) {
-        ledger = [];
-        renderTable();
-        updateSummary();
-        updateButtons();
-
-        const payload = {
-          meta: {
-            church: 'Misión Pentecostal de Jesucristo',
-            updatedAt: new Date().toISOString()
-          },
-          entries: []
-        };
-        saveChurchToJSONBin(payload)
-          .then(() => {
-            lastUpdateISO = payload.meta.updatedAt;
-            if (lastSaved) {
-              lastSaved.innerHTML = '<i class="fa-solid fa-clock-rotate-left me-1"></i>' +
-                'Última actualización: ' + formatSV(lastUpdateISO);
-            }
-            Swal.fire('Listo', 'Se vació la lista y se guardó el estado vacío.', 'success');
-          })
-          .catch(e => Swal.fire('Error', String(e), 'error'));
-      }
-    });
   });
 
   // --- Exportar a PDF ---
   btnPDF.addEventListener('click', () => {
-    if (!ledger.length) return;
+    if (!movBody.rows.length) {
+      Swal.fire('Sin datos', 'No hay registros para exportar.', 'info');
+      return;
+    }
     const { jsPDF } = window.jspdf;
-    const doc   = new jsPDF();
-    const fecha = new Date().toISOString().split('T')[0];
+    const doc = new jsPDF();
+    const fechaHoy = new Date().toISOString().split('T')[0];
 
     doc.setFontSize(12);
     doc.text('Misión Pentecostal de Jesucristo', 10, 10);
-    doc.text('Reporte de movimientos', 10, 18);
-    doc.text('Fecha de generación: ' + fecha, 10, 26);
+    doc.text('Control de ingresos y egresos', 10, 18);
+    doc.text('Fecha de reporte: ' + fechaHoy, 10, 26);
 
-    const rows = ledger.map((e, idx) => ([
-      idx + 1,
-      e.date,
-      e.event,
-      e.type,
-      e.category,
-      e.description || '',
-      e.type === 'ingreso' ? e.amount.toFixed(2) : '',
-      e.type === 'egreso'  ? e.amount.toFixed(2) : ''
-    ]));
+    const rows = [...movBody.getElementsByTagName('tr')].map((tr, idx) => {
+      const fecha = tr.cells[1].innerText.trim();
+      const evento = tr.cells[2].innerText.trim();
+      const tipo   = tr.dataset.tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
+      const cat    = tr.cells[4].innerText.trim();
+      const monto  = tr.cells[5].innerText.trim();
+      const desc   = tr.cells[6].innerText.trim();
+      return [idx + 1, fecha, evento, tipo, cat, monto, desc];
+    });
 
     doc.autoTable({
       startY: 34,
-      head: [['#','Fecha','Evento','Tipo','Categoría','Descripción','Ingreso ($)','Egreso ($)']],
+      head: [['#', 'Fecha', 'Evento', 'Tipo', 'Categoría', 'Monto', 'Descripción']],
       body: rows,
-      styles: { fontSize: 9, cellPadding: 2 }
+      styles: { fontSize: 9, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 18 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 20 },
+        6: { cellWidth: 60 }
+      }
     });
 
-    const finalY = doc.lastAutoTable.finalY + 6;
+    const y = doc.lastAutoTable.finalY + 6;
     doc.text(
-      'Total ingresos: $' + sumIngresos.textContent +
-      '   |   Total egresos: $' + sumEgresos.textContent +
-      '   |   Saldo: $' + sumSaldo.textContent,
+      'Total Ingresos: ' + totalIngresosEl.textContent +
+      '   |   Total Egresos: ' + totalEgresosEl.textContent +
+      '   |   Saldo: ' + saldoEl.textContent,
       10,
-      finalY
+      y
     );
 
-    const fileName = 'Cuenta_Iglesia_' + fecha + '.pdf';
-    doc.save(fileName);
+    doc.save('MPJ_ingresos_egresos_' + fechaHoy + '.pdf');
   });
 
   // --- Exportar a Excel ---
   btnExcel.addEventListener('click', () => {
-    if (!ledger.length) return;
+    if (!movBody.rows.length) {
+      Swal.fire('Sin datos', 'No hay registros para exportar.', 'info');
+      return;
+    }
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    const data = [['Fecha', 'Evento', 'Tipo', 'Categoría', 'Monto', 'Descripción']];
 
-    const fecha = new Date().toISOString().split('T')[0];
-    const data = [['Fecha','Evento','Tipo','Categoría','Descripción','Ingreso','Egreso']];
-
-    ledger.forEach(e => {
-      data.push([
-        e.date,
-        e.event,
-        e.type,
-        e.category,
-        e.description || '',
-        e.type === 'ingreso' ? e.amount : '',
-        e.type === 'egreso'  ? e.amount : ''
-      ]);
+    [...movBody.getElementsByTagName('tr')].forEach((tr) => {
+      const fecha = tr.cells[1].innerText.trim();
+      const evento = tr.cells[2].innerText.trim();
+      const tipoText = tr.dataset.tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
+      const cat = tr.cells[4].innerText.trim();
+      const monto = tr.cells[5].innerText.replace(/[^\d.-]/g, '');
+      const desc = tr.cells[6].innerText.trim();
+      data.push([fecha, evento, tipoText, cat, parseFloat(monto) || 0, desc]);
     });
 
-    const wb   = XLSX.utils.book_new();
-    const ws   = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, 'MPJ');
 
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob  = new Blob([wbout], { type: 'application/octet-stream' });
-    const link  = document.createElement('a');
-    link.href   = URL.createObjectURL(blob);
-    link.download = 'Cuenta_Iglesia_' + fecha + '.xlsx';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'MPJ_ingresos_egresos_' + fechaHoy + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   });
 
-  // --- Cargar datos ya guardados en JSONBin al iniciar ---
-  try {
-    const record = await loadChurchFromJSONBin();
-    if (record && Array.isArray(record.entries)) {
-      ledger = record.entries.map(e => ({
-        id: e.id || (Date.now().toString() + Math.random().toString(16).slice(2)),
-        date: e.date || '',
-        event: e.event || '',
-        type: e.type || '',
-        category: e.category || '',
-        description: e.description || '',
-        amount: Number(e.amount) || 0
-      }));
-      lastUpdateISO = record.meta?.updatedAt || record.meta?.updated_at || null;
-      if (lastSaved && lastUpdateISO) {
-        lastSaved.innerHTML = '<i class="fa-solid fa-clock-rotate-left me-1"></i>' +
-          'Última actualización: ' + formatSV(lastUpdateISO);
-      }
-      renderTable();
-      updateSummary();
-      updateButtons();
+  // --- Limpiar todo ---
+  btnLimpiar.addEventListener('click', () => {
+    if (!movBody.rows.length &&
+        !eventoInput.value.trim() &&
+        !montoInput.value.trim() &&
+        !descripcionInput.value.trim()) {
+      return;
     }
-  } catch (err) {
-    console.error('Error al cargar datos iniciales de JSONBin:', err);
-  }
 
-  // Foco inicial cómodo
-  eventoInput.focus();
+    Swal.fire({
+      title: '¿Limpiar todo?',
+      text: 'Se vaciará la tabla y el formulario. Luego puede volver a guardar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, limpiar',
+      cancelButtonText: 'Cancelar'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        movBody.innerHTML = '';
+        eventoInput.value = '';
+        montoInput.value = '';
+        descripcionInput.value = '';
+        fechaInput.value = today;
+        recalcTotals();
+        lastSavedEl.innerHTML =
+          '<i class="fa-solid fa-clock-rotate-left me-1"></i> Aún no guardado.';
+      }
+    });
+  });
 });

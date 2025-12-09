@@ -1,12 +1,13 @@
-// api/church-data.js — Proxy a Google Sheets para categorías de ingresos y egresos
+// api/church-data.js — Lee categorías de ingresos y egresos desde Google Sheets
 export default async function handler(req, res) {
   try {
     const apiKey  = process.env.GOOGLE_SHEETS_API_KEY;
     const sheetId = process.env.GOOGLE_SHEETS_SHEET_ID;
-    const range   = process.env.GOOGLE_SHEETS_CHURCH_RANGE || 'church_data!A2:B5000';
+    const sheetName = process.env.GOOGLE_SHEETS_CHURCH_SHEET || 'church_data';
+    const range   = process.env.GOOGLE_SHEETS_CHURCH_RANGE || `${sheetName}!A2:B5000`;
 
     if (!apiKey || !sheetId) {
-      return res.status(500).json({ error: 'Faltan variables de entorno GOOGLE_SHEETS_API_KEY o GOOGLE_SHEETS_SHEET_ID.' });
+      return res.status(500).json({ error: 'Faltan GOOGLE_SHEETS_API_KEY o GOOGLE_SHEETS_SHEET_ID en variables de entorno.' });
     }
 
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`;
@@ -18,21 +19,23 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const rows = Array.isArray(data.values) ? data.values : [];
+    const values = Array.isArray(data.values) ? data.values : [];
 
     const incomes = [];
     const expenses = [];
 
-    rows.forEach(row => {
-      const inc = (row[0] || '').toString().trim();
-      const exp = (row[1] || '').toString().trim();
-      if (inc) incomes.push(inc);
-      if (exp) expenses.push(exp);
-    });
+    for (const row of values) {
+      if (row[0] && String(row[0]).trim() !== '') {
+        incomes.push(String(row[0]).trim());
+      }
+      if (row[1] && String(row[1]).trim() !== '') {
+        expenses.push(String(row[1]).trim());
+      }
+    }
 
     return res.status(200).json({ incomes, expenses });
   } catch (err) {
-    console.error('Error interno en /api/church-data:', err);
-    return res.status(500).json({ error: 'Error interno en /api/church-data' });
+    console.error('church-data error', err);
+    return res.status(500).json({ error: 'Error interno en /api/church-data', details: String(err) });
   }
 }

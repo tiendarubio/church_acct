@@ -3,15 +3,8 @@ body {
   background: #f7f7f8;
 }
 
-.logo-navbar {
-  max-height: 32px;
-  width: auto;
-}
-
-.table-checklist-wrapper {
-  width: 100%;
+.table-wrapper {
   max-height: 70vh;
-  overflow-x: auto;
   overflow-y: auto;
 }
 
@@ -24,34 +17,8 @@ body {
   font-size: 0.9rem;
 }
 
-.section-title {
-  margin-bottom: 20px;
-  font-weight: 700;
-}
-
 @media (max-width: 767.98px) {
-  .table-checklist-wrapper {
+  .table-wrapper {
     max-height: none;
   }
-}
-
-/* Para que sea más legible para personas mayores */
-.card-title {
-  font-size: 0.95rem;
-}
-
-.form-label {
-  font-size: 0.9rem;
-}
-
-#saldoWrapper {
-  font-weight: 700;
-}
-
-#sumSaldo.positivo {
-  color: #198754; /* verde */
-}
-
-#sumSaldo.negativo {
-  color: #dc3545; /* rojo */
 }
