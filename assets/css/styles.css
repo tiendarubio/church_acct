@@ -1,79 +1,57 @@
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 15px;
+  background: #f7f7f8;
 }
 
-.navbar-brand {
-  font-size: 1rem;
+.logo-navbar {
+  max-height: 32px;
+  width: auto;
 }
 
-.summary-card {
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-}
-
-.summary-label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  color: #6c757d;
-}
-
-.summary-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.table-movimientos-wrapper {
+.table-checklist-wrapper {
   width: 100%;
   max-height: 70vh;
   overflow-x: auto;
   overflow-y: auto;
 }
 
-.badge-tipo-ingreso {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-
-.badge-tipo-egreso {
-  background: #ffebee;
-  color: #b71c1c;
+#movTable {
+  width: 100%;
+  table-layout: auto;
 }
 
 #movTable .btn i {
-  font-size: 0.95rem;
-}
-
-.step-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 999px;
-  background: #0d6efd;
-  color: #fff;
   font-size: 0.9rem;
-  font-weight: 600;
-  margin-right: 0.35rem;
 }
 
-.big-input {
-  font-size: 0.95rem;
-  padding-top: 0.4rem;
-  padding-bottom: 0.4rem;
+.section-title {
+  margin-bottom: 20px;
+  font-weight: 700;
 }
 
 @media (max-width: 767.98px) {
-  body {
-    font-size: 15px;
-  }
-  .table-movimientos-wrapper {
+  .table-checklist-wrapper {
     max-height: none;
   }
-  .navbar-brand span {
-    font-size: 0.95rem;
-  }
+}
+
+/* Para que sea más legible para personas mayores */
+.card-title {
+  font-size: 0.95rem;
+}
+
+.form-label {
+  font-size: 0.9rem;
+}
+
+#saldoWrapper {
+  font-weight: 700;
+}
+
+#sumSaldo.positivo {
+  color: #198754; /* verde */
+}
+
+#sumSaldo.negativo {
+  color: #dc3545; /* rojo */
 }

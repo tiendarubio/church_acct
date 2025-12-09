@@ -1,43 +1,38 @@
+// api/church-data.js — Proxy a Google Sheets para categorías de ingresos y egresos
 export default async function handler(req, res) {
   try {
     const apiKey  = process.env.GOOGLE_SHEETS_API_KEY;
-    const sheetId = process.env.GOOGLE_SHEETS_ID;
+    const sheetId = process.env.GOOGLE_SHEETS_SHEET_ID;
+    const range   = process.env.GOOGLE_SHEETS_CHURCH_RANGE || 'church_data!A2:B5000';
 
     if (!apiKey || !sheetId) {
-      res.status(500).json({ error: 'Faltan variables de entorno de Google Sheets' });
-      return;
+      return res.status(500).json({ error: 'Faltan variables de entorno GOOGLE_SHEETS_API_KEY o GOOGLE_SHEETS_SHEET_ID.' });
     }
 
-    const range = 'church_data!A2:B5000';
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`;
+    const response = await fetch(url);
 
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      const text = await resp.text();
-      res.status(resp.status).json({ error: 'Error en Google Sheets', details: text });
-      return;
+    if (!response.ok) {
+      const text = await response.text();
+      return res.status(response.status).json({ error: 'Error al consultar Google Sheets (church_data)', details: text });
     }
 
-    const data = await resp.json();
-    const values = Array.isArray(data.values) ? data.values : [];
+    const data = await response.json();
+    const rows = Array.isArray(data.values) ? data.values : [];
 
-    const incomesSet = new Set();
-    const expensesSet = new Set();
+    const incomes = [];
+    const expenses = [];
 
-    values.forEach(row => {
-      if (!Array.isArray(row)) return;
-      const inc = (row[0] || '').trim();
-      const exp = (row[1] || '').trim();
-      if (inc) incomesSet.add(inc);
-      if (exp) expensesSet.add(exp);
+    rows.forEach(row => {
+      const inc = (row[0] || '').toString().trim();
+      const exp = (row[1] || '').toString().trim();
+      if (inc) incomes.push(inc);
+      if (exp) expenses.push(exp);
     });
 
-    const incomes = Array.from(incomesSet);
-    const expenses = Array.from(expensesSet);
-
-    res.status(200).json({ incomes, expenses });
+    return res.status(200).json({ incomes, expenses });
   } catch (err) {
-    console.error('church-data error', err);
-    res.status(500).json({ error: 'Error interno en church-data', details: String(err) });
+    console.error('Error interno en /api/church-data:', err);
+    return res.status(500).json({ error: 'Error interno en /api/church-data' });
   }
 }

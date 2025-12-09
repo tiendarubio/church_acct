@@ -3,239 +3,240 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ChurchAcct — Misión Pentecostal de Jesucristo</title>
+  <title>Cuenta Iglesia — Misión Pentecostal de Jesucristo</title>
 
+  <!-- Bootstrap & FontAwesome -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
 
+  <!-- Estilos propios -->
   <link href="assets/css/styles.css" rel="stylesheet">
 
+  <!-- Librerías externas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-light">
 
+  <!-- NAVBAR SUPERIOR -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
     <div class="container-fluid">
       <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-        <i class="fa-solid fa-church"></i>
-        <span class="fw-semibold">Misión Pentecostal de Jesucristo</span>
+        <i class="fa-solid fa-church text-warning"></i>
+        <span class="fw-semibold">Cuenta Iglesia</span>
       </a>
-      <div class="d-flex align-items-center gap-3 ms-auto">
-        <span class="text-white-50 small d-none d-md-inline">Control sencillo de ingresos y egresos</span>
-        <span class="badge bg-secondary" id="lastSaved">
-          <i class="fa-solid fa-clock-rotate-left me-1"></i>
-          Aún no guardado.
-        </span>
+      <div class="ms-auto text-white-50 small d-none d-md-block">
+        Misión Pentecostal de Jesucristo
       </div>
     </div>
   </nav>
 
+  <!-- CONTENIDO PRINCIPAL -->
   <main class="container-fluid py-4">
     <div class="row g-4">
+
+      <!-- PANEL IZQUIERDO: RESUMEN -->
       <div class="col-xl-3 col-lg-4">
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-white border-0 pb-0">
             <h6 class="card-title mb-1">
-              <span class="step-pill">1</span>
-              Resumen rápido
+              <i class="fa-solid fa-chart-pie me-2 text-primary"></i>
+              Resumen general
             </h6>
-            <p class="text-muted small mb-0">Total de ingresos, egresos y saldo.</p>
+            <p class="text-muted small mb-0">
+              Vista rápida de ingresos, egresos y saldo.
+            </p>
           </div>
           <div class="card-body">
-            <div class="summary-card mb-2">
-              <div class="summary-label">Ingresos</div>
-              <div id="totalIngresos" class="summary-value">$ 0.00</div>
+            <div class="mb-3">
+              <div class="small text-muted mb-1">Total de ingresos</div>
+              <div class="h5 text-success mb-0">
+                $<span id="sumIngresos">0.00</span>
+              </div>
             </div>
-            <div class="summary-card mb-2">
-              <div class="summary-label">Egresos</div>
-              <div id="totalEgresos" class="summary-value">$ 0.00</div>
+            <div class="mb-3">
+              <div class="small text-muted mb-1">Total de egresos</div>
+              <div class="h5 text-danger mb-0">
+                $<span id="sumEgresos">0.00</span>
+              </div>
             </div>
-            <div class="summary-card">
-              <div class="summary-label">Saldo</div>
-              <div id="saldo" class="summary-value">$ 0.00</div>
+            <div class="mb-2">
+              <div class="small text-muted mb-1">Saldo actual</div>
+              <div class="h4 mb-0" id="saldoWrapper">
+                <span id="saldoPrefijo">$</span><span id="sumSaldo">0.00</span>
+              </div>
             </div>
+            <hr>
+            <p class="small text-muted mb-0">
+              Esta herramienta está pensada para ser sencilla y clara,
+              de forma que cualquier hermano o hermana de la iglesia
+              pueda revisar y registrar los movimientos sin complicaciones.
+            </p>
           </div>
         </div>
 
+        <!-- PANEL: NOTAS -->
         <div class="card shadow-sm">
           <div class="card-header bg-white border-0 pb-0">
-            <h6 class="card-title mb-1 d-flex align-items-center justify-content-between">
-              <span>
-                <span class="step-pill">2</span>
-                Filtros (opcional)
-              </span>
+            <h6 class="card-title mb-1">
+              <i class="fa-solid fa-circle-info me-2 text-primary"></i>
+              Indicaciones
             </h6>
-            <p class="text-muted small mb-0">Ver solo un evento o rango de fechas.</p>
           </div>
-          <div class="card-body">
-            <div class="mb-3">
-              <label for="filterEvento" class="form-label fw-semibold mb-1">Evento</label>
-              <input id="filterEvento" type="text" class="form-control form-control-sm" placeholder="Ej. Vigilia de Jóvenes">
-            </div>
-            <div class="mb-3">
-              <label for="filterTipo" class="form-label fw-semibold mb-1">Tipo</label>
-              <select id="filterTipo" class="form-select form-select-sm">
-                <option value="TODOS">Todos</option>
-                <option value="INGRESO">Solo ingresos</option>
-                <option value="EGRESO">Solo egresos</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold mb-1">Rango de fechas</label>
-              <div class="d-flex flex-column gap-2">
-                <input id="filterDesde" type="date" class="form-control form-control-sm">
-                <input id="filterHasta" type="date" class="form-control form-control-sm">
-              </div>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-              <button id="btnApplyFilters" class="btn btn-primary btn-sm w-100">
-                <i class="fa-solid fa-filter me-1"></i> Aplicar filtros
-              </button>
-              <button id="btnClearFilters" class="btn btn-outline-secondary btn-sm w-100">
-                <i class="fa-solid fa-eraser me-1"></i> Quitar filtros
-              </button>
-            </div>
+          <div class="card-body small text-muted">
+            <ul class="list-unstyled mb-0">
+              <li class="mb-2 d-flex">
+                <i class="fa-solid fa-calendar-day text-primary me-2 mt-1"></i>
+                <span>Empiece siempre eligiendo la <strong>fecha</strong> y el <strong>evento</strong>.</span>
+              </li>
+              <li class="mb-2 d-flex">
+                <i class="fa-solid fa-arrow-right-arrow-left text-primary me-2 mt-1"></i>
+                <span>Seleccione si es <strong>Ingreso</strong> o <strong>Egreso</strong> y luego la <strong>categoría</strong>.</span>
+              </li>
+              <li class="mb-2 d-flex">
+                <i class="fa-solid fa-money-bill-wave text-primary me-2 mt-1"></i>
+                <span>Escriba el <strong>monto</strong> con cuidado y una breve descripción.</span>
+              </li>
+              <li class="d-flex">
+                <i class="fa-solid fa-floppy-disk text-primary me-2 mt-1"></i>
+                <span>Use el botón <strong>Guardar</strong> para dejar todo respaldado.</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
 
+      <!-- PANEL DERECHO: FORM + TABLA -->
       <div class="col-xl-9 col-lg-8">
+
+        <!-- Card: Formulario de registro -->
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-white border-0">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <div>
-                <h6 class="card-title mb-1">
-                  <span class="step-pill">3</span>
-                  Registrar movimiento
-                </h6>
-                <p class="text-muted small mb-0">
-                  Llene los datos y presione <strong>Agregar a la tabla</strong>.
-                </p>
-              </div>
-            </div>
+            <h6 class="card-title mb-1">
+              <i class="fa-solid fa-pen-to-square me-2 text-primary"></i>
+              Registrar movimiento
+            </h6>
           </div>
           <div class="card-body border-top">
-            <div class="row g-3">
-              <div class="col-md-3 col-sm-6">
-                <label for="movFecha" class="form-label fw-semibold mb-1">Fecha</label>
-                <input id="movFecha" type="date" class="form-control form-control-sm big-input">
-              </div>
-              <div class="col-md-5 col-sm-6">
-                <label for="movEvento" class="form-label fw-semibold mb-1">Evento</label>
-                <input id="movEvento" type="text" class="form-control form-control-sm big-input" placeholder="Ej. Culto general, Vigilia, Campaña">
-              </div>
-              <div class="col-md-2 col-sm-6">
-                <label for="movTipo" class="form-label fw-semibold mb-1">Tipo</label>
-                <select id="movTipo" class="form-select form-select-sm big-input">
-                  <option value="INGRESO" selected>Ingreso</option>
-                  <option value="EGRESO">Egreso</option>
-                </select>
-              </div>
-              <div class="col-md-2 col-sm-6">
-                <label for="movMonto" class="form-label fw-semibold mb-1">Monto</label>
-                <input id="movMonto" type="number" min="0" step="0.01" class="form-control form-control-sm big-input" placeholder="0.00">
+            <form id="entryForm" class="row g-3">
+
+              <div class="col-md-3">
+                <label for="fechaInput" class="form-label fw-semibold">Fecha</label>
+                <input id="fechaInput" type="date" class="form-control form-control-sm">
               </div>
 
-              <div class="col-md-4 col-sm-6">
-                <label for="movCategoria" class="form-label fw-semibold mb-1">Categoría</label>
-                <select id="movCategoria" class="form-select form-select-sm big-input">
-                  <option value="">Cargando categorías...</option>
-                </select>
-                <small class="text-muted small">Desde la hoja <strong>church_data</strong>.</small>
-              </div>
-              <div class="col-md-4 col-sm-6">
-                <label for="movMetodo" class="form-label fw-semibold mb-1">Método de pago</label>
-                <select id="movMetodo" class="form-select form-select-sm big-input">
-                  <option value="Efectivo" selected>Efectivo</option>
-                  <option value="Transferencia">Transferencia</option>
-                  <option value="Depósito">Depósito</option>
-                  <option value="Tarjeta">Tarjeta</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-              <div class="col-md-4 col-sm-12">
-                <label for="movResponsable" class="form-label fw-semibold mb-1">Responsable</label>
-                <input id="movResponsable" type="text" class="form-control form-control-sm big-input" placeholder="Nombre del encargado">
+              <div class="col-md-5">
+                <label for="eventoInput" class="form-label fw-semibold">Evento / Actividad</label>
+                <input id="eventoInput" type="text" class="form-control form-control-sm" placeholder="Ej. Culto general, Vigilia, Campaña, etc.">
               </div>
 
-              <div class="col-12">
-                <label for="movDescripcion" class="form-label fw-semibold mb-1">Descripción</label>
-                <input id="movDescripcion" type="text" class="form-control form-control-sm big-input" placeholder="Ej. Ofrenda general, compra de comida, pago de sonido">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Tipo</label>
+                <div class="d-flex gap-3 mt-1">
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tipoMov" id="tipoIngreso" value="ingreso">
+                    <label class="form-check-label" for="tipoIngreso">Ingreso</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tipoMov" id="tipoEgreso" value="egreso">
+                    <label class="form-check-label" for="tipoEgreso">Egreso</label>
+                  </div>
+                </div>
               </div>
-              <div class="col-12">
-                <label for="movNota" class="form-label fw-semibold mb-1">Nota / referencia (opcional)</label>
-                <input id="movNota" type="text" class="form-control form-control-sm big-input" placeholder="Número de factura, recibo u otro detalle">
-              </div>
-            </div>
 
-            <div class="mt-3 d-flex justify-content-end">
-              <button id="btnAddMovement" class="btn btn-primary btn-lg">
-                <i class="fa-solid fa-plus me-1"></i> Agregar a la tabla
-              </button>
-            </div>
+              <div class="col-md-4">
+                <label for="categoriaSelect" class="form-label fw-semibold">Categoría</label>
+                <select id="categoriaSelect" class="form-select form-select-sm" disabled>
+                  <option value="">Seleccione tipo primero…</option>
+                </select>
+                <div class="form-text small text-muted">
+                  Las categorías vienen de la hoja <strong>church_data</strong> en Google Sheets.
+                </div>
+              </div>
+
+              <div class="col-md-3">
+                <label for="montoInput" class="form-label fw-semibold">Monto ($)</label>
+                <input id="montoInput" type="number" min="0" step="0.01" class="form-control form-control-sm" placeholder="0.00">
+              </div>
+
+              <div class="col-md-5">
+                <label for="descripcionInput" class="form-label fw-semibold">Descripción</label>
+                <input id="descripcionInput" type="text" class="form-control form-control-sm" placeholder="Ej. Ofrenda especial, pago de sonido, etc.">
+              </div>
+
+              <div class="col-12 d-flex justify-content-end">
+                <button type="button" id="btnAddEntry" class="btn btn-primary btn-sm">
+                  <i class="fa-solid fa-plus me-1"></i> Agregar a la lista
+                </button>
+              </div>
+            </form>
           </div>
         </div>
 
+        <!-- Card: Listado de movimientos -->
         <div class="card shadow-sm">
           <div class="card-header bg-white border-0">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div>
                 <h6 class="card-title mb-1">
-                  <span class="step-pill">4</span>
-                  Movimientos registrados
+                  <i class="fa-solid fa-list-ul me-2 text-primary"></i>
+                  Listado de movimientos
                 </h6>
                 <p class="text-muted small mb-0">
-                  Se pueden editar o borrar.
+                  Aquí se muestran todos los movimientos registrados.
                 </p>
               </div>
-              <div class="btn-toolbar gap-2" role="toolbar">
-                <button id="btnSave" class="btn btn-success btn-sm">
+              <div class="btn-toolbar gap-2" role="toolbar" aria-label="Toolbar">
+                <button id="btnSaveAll" class="btn btn-primary btn-sm">
                   <i class="fa-solid fa-floppy-disk me-1"></i> Guardar
                 </button>
-                <button id="btnPDF" class="btn btn-outline-danger btn-sm">
+                <button id="btnPDF" class="btn btn-outline-danger btn-sm" disabled>
                   <i class="fa-solid fa-file-pdf me-1"></i> PDF
                 </button>
-                <button id="btnExcel" class="btn btn-outline-success btn-sm">
+                <button id="btnExcel" class="btn btn-outline-success btn-sm" disabled>
                   <i class="fa-solid fa-file-excel me-1"></i> Excel
                 </button>
-                <button id="btnClear" class="btn btn-outline-secondary btn-sm">
-                  <i class="fa-solid fa-trash-can me-1"></i> Limpiar todos
+                <button id="btnClearAll" class="btn btn-outline-secondary btn-sm" disabled>
+                  <i class="fa-solid fa-trash-can me-1"></i> Limpiar
                 </button>
               </div>
             </div>
           </div>
-
           <div class="card-body border-top">
-            <div class="table-responsive table-movimientos-wrapper">
+            <div class="table-responsive table-checklist-wrapper">
               <table class="table table-sm table-bordered align-middle mb-0" id="movTable">
                 <thead class="table-light">
                   <tr>
                     <th class="text-center" style="width: 48px;">#</th>
-                    <th class="text-nowrap">Fecha</th>
+                    <th>Fecha</th>
                     <th>Evento</th>
-                    <th class="text-nowrap">Tipo</th>
+                    <th>Tipo</th>
                     <th>Categoría</th>
                     <th>Descripción</th>
-                    <th class="text-end text-nowrap">Monto</th>
-                    <th class="text-nowrap">Método</th>
-                    <th>Responsable</th>
-                    <th class="text-center text-nowrap">Acciones</th>
+                    <th class="text-end">Ingreso ($)</th>
+                    <th class="text-end">Egreso ($)</th>
+                    <th class="text-center" style="width: 60px;">Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="movBody"></tbody>
               </table>
             </div>
+            <p id="lastSaved" class="small text-muted mt-2 mb-0">
+              <i class="fa-solid fa-clock-rotate-left me-1"></i> Aún no guardado.
+            </p>
           </div>
         </div>
-      </div>
-    </div>
+
+      </div><!-- /col derecha -->
+    </div><!-- /row -->
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="/assets/js/app.js"></script>
-  <script src="/assets/js/church.js"></script>
+  <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/church.js"></script>
 </body>
 </html>

@@ -1,48 +1,75 @@
-// app.js — Helpers para JSONBin y Google Sheets (categorías de iglesia)
+// app.js — Helpers para Cuenta Iglesia (Vercel, llaves ocultas en backend)
 
-function loadChurchCategories() {
-  return fetch('/api/church-data')
-    .then(r => {
-      if (!r.ok) throw new Error('Error al cargar categorías (' + r.status + ')');
-      return r.json();
-    })
-    .catch(e => {
-      console.error('Error loadChurchCategories:', e);
-      return { incomes: [], expenses: [] };
-    });
+// BIN único para la contabilidad de la iglesia
+const CHURCH_BIN_ID = '6937440743b1c97be9e08143';
+
+// Categorías (se cargan desde Google Sheets vía /api/church-data)
+let CHURCH_INCOME_CATS = [];
+let CHURCH_EXPENSE_CATS = [];
+
+/**
+ * Carga categorías de ingresos y egresos desde Google Sheets.
+ * Hoja: church_data
+ * Columna A (desde fila 2): Ingresos
+ * Columna B (desde fila 2): Egresos
+ */
+async function loadChurchCategories() {
+  try {
+    const resp = await fetch('/api/church-data');
+    if (!resp.ok) {
+      throw new Error('Error al cargar categorías (' + resp.status + ')');
+    }
+    const data = await resp.json();
+    CHURCH_INCOME_CATS = Array.isArray(data.incomes) ? data.incomes : [];
+    CHURCH_EXPENSE_CATS = Array.isArray(data.expenses) ? data.expenses : [];
+  } catch (err) {
+    console.error('Error loadChurchCategories:', err);
+    CHURCH_INCOME_CATS = [];
+    CHURCH_EXPENSE_CATS = [];
+  }
 }
 
-function saveToBin(binId, payload) {
-  if (!binId) {
-    return Promise.reject(new Error('BIN no configurado.'));
+/**
+ * Guarda el estado completo (todas las filas) en JSONBin
+ */
+function saveChurchToJSONBin(payload) {
+  if (!CHURCH_BIN_ID) {
+    return Promise.reject(new Error('BIN de iglesia no configurado.'));
   }
-
   return fetch('/api/jsonbin-save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ binId, payload })
+    body: JSON.stringify({ binId: CHURCH_BIN_ID, payload })
   }).then(r => {
-    if (!r.ok) throw new Error('Error al guardar en servidor (' + r.status + ')');
+    if (!r.ok) {
+      throw new Error('Error al guardar en servidor (' + r.status + ')');
+    }
     return r.json();
   });
 }
 
-function loadFromBin(binId) {
-  if (!binId) return Promise.resolve(null);
-  const url = '/api/jsonbin-load?binId=' + encodeURIComponent(binId);
-
-  return fetch(url)
+/**
+ * Carga el estado completo desde JSONBin
+ */
+function loadChurchFromJSONBin() {
+  if (!CHURCH_BIN_ID) return Promise.resolve(null);
+  return fetch('/api/jsonbin-load?binId=' + encodeURIComponent(CHURCH_BIN_ID))
     .then(r => {
-      if (!r.ok) throw new Error('Error al cargar desde servidor (' + r.status + ')');
+      if (!r.ok) {
+        throw new Error('Error al cargar desde servidor (' + r.status + ')');
+      }
       return r.json();
     })
     .then(d => d.record || d || null)
-    .catch(e => {
-      console.error('JSONBin load error:', e);
+    .catch(err => {
+      console.error('JSONBin load error:', err);
       return null;
     });
 }
 
+/**
+ * Formatea fecha/hora a formato ES-SV
+ */
 function formatSV(iso) {
   if (!iso) return 'Aún no guardado.';
   try {
