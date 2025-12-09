@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     return res.status(200).json(data);
   } catch (err) {
-    console.error('jsonbin-save error', err);
-    return res.status(500).json({ error: 'Error interno en /api/jsonbin-save', details: String(err) });
+    console.error(err);
+    return res.status(500).json({ error: 'Error interno en /api/jsonbin-save' });
   }
 }

@@ -1,25 +1,19 @@
-// api/church-data.js — Lee categorías de ingresos y egresos desde Google Sheets
+// /api/church-data.js — Categorías de ingresos y egresos para la iglesia
 export default async function handler(req, res) {
   try {
-    const apiKey =
-      process.env.GOOGLE_SHEETS_CHURCH_API_KEY ||
-      process.env.GOOGLE_SHEETS_API_KEY;
-
+    const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
     const sheetId =
-      process.env.GOOGLE_SHEETS_CHURCH_SHEET_ID ||
       process.env.GOOGLE_SHEETS_SHEET_ID ||
-      process.env.GOOGLE_SHEETS_ID ||
-      '1b5B9vp0GKc4T_mORssdj-J2vgc-xEO5YAFkcrVX-nHI'; // fallback al libro que ya usas en otras TR apps
+      '1b5B9vp0GKc4T_mORssdj-J2vgc-xEO5YAFkcrVX-nHI';
 
-    const sheetName = process.env.GOOGLE_SHEETS_CHURCH_SHEET || 'church_data';
+    // church_data!A2:B1000 -> A ingresos, B egresos
     const range =
-      process.env.GOOGLE_SHEETS_CHURCH_RANGE ||
-      `${sheetName}!A2:B5000`;
+      process.env.GOOGLE_SHEETS_CHURCH_RANGE || 'church_data!A2:B1000';
 
     if (!apiKey) {
       return res
         .status(500)
-        .json({ error: 'Falta GOOGLE_SHEETS_API_KEY (o GOOGLE_SHEETS_CHURCH_API_KEY) en variables de entorno.' });
+        .json({ error: 'Falta GOOGLE_SHEETS_API_KEY en variables de entorno.' });
     }
 
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(
@@ -30,9 +24,10 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const text = await response.text();
-      return res
-        .status(response.status)
-        .json({ error: 'Error al consultar Google Sheets', details: text, url });
+      return res.status(response.status).json({
+        error: 'Error al consultar Google Sheets (church_data)',
+        details: text
+      });
     }
 
     const data = await response.json();
@@ -41,20 +36,23 @@ export default async function handler(req, res) {
     const incomes = [];
     const expenses = [];
 
-    for (const row of values) {
-      if (row[0] && String(row[0]).trim() !== '') {
-        incomes.push(String(row[0]).trim());
-      }
-      if (row[1] && String(row[1]).trim() !== '') {
-        expenses.push(String(row[1]).trim());
-      }
-    }
+    values.forEach((row) => {
+      const ingreso = row[0];
+      const egreso = row[1];
 
-    return res.status(200).json({ incomes, expenses, rangeUsed: range });
+      if (ingreso && String(ingreso).trim()) {
+        incomes.push(String(ingreso).trim());
+      }
+      if (egreso && String(egreso).trim()) {
+        expenses.push(String(egreso).trim());
+      }
+    });
+
+    return res.status(200).json({ incomes, expenses });
   } catch (err) {
-    console.error('church-data error', err);
+    console.error(err);
     return res
       .status(500)
-      .json({ error: 'Error interno en /api/church-data', details: String(err) });
+      .json({ error: 'Error interno en /api/church-data' });
   }
 }

@@ -1,374 +1,590 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const $ = (id) => document.getElementById(id);
 
-  const fechaInput       = $('fechaInput');
-  const eventoInput      = $('eventoInput');
-  const tipoIngresoRadio = $('tipoIngreso');
-  const tipoEgresoRadio  = $('tipoEgreso');
-  const categoriaSelect  = $('categoriaSelect');
-  const montoInput       = $('montoInput');
-  const descripcionInput = $('descripcionInput');
-  const btnAgregar       = $('btnAgregar');
+  // Referencias a elementos
+  const dateInput = $('dateInput');
+  const eventInput = $('eventInput');
+  const btnTipoIngreso = $('btnTipoIngreso');
+  const btnTipoEgreso = $('btnTipoEgreso');
+  const categorySelect = $('categorySelect');
+  const amountInput = $('amountInput');
+  const descriptionInput = $('descriptionInput');
+  const btnAddMovement = $('btnAddMovement');
 
-  const movBody          = $('movBody');
-  const totalIngresosEl  = $('totalIngresos');
-  const totalEgresosEl   = $('totalEgresos');
-  const saldoEl          = $('saldo');
-  const lastSavedEl      = $('lastSaved');
-  const msgCategorias    = $('msgCategorias');
+  const movementsBody = $('movementsBody');
 
-  const btnGuardar       = $('btnGuardar');
-  const btnPDF           = $('btnPDF');
-  const btnExcel         = $('btnExcel');
-  const btnLimpiar       = $('btnLimpiar');
+  const totalIncomesEl = $('totalIncomes');
+  const totalExpensesEl = $('totalExpenses');
+  const balanceEl = $('balance');
+  const filterStatusEl = $('filterStatus');
 
-  const today = new Date().toISOString().split('T')[0];
-  fechaInput.value = today;
+  const filterFrom = $('filterFrom');
+  const filterTo = $('filterTo');
+  const filterText = $('filterText');
+  const btnApplyFilters = $('btnApplyFilters');
+  const btnClearFilters = $('btnClearFilters');
 
-  function parseNum(v) {
-    const n = parseFloat(v);
+  const btnSaveCloud = $('btnSaveCloud');
+  const btnExportPDF = $('btnExportPDF');
+  const btnExportExcel = $('btnExportExcel');
+  const btnClearAll = $('btnClearAll');
+
+  // Estado
+  let incomeCategories = [];
+  let expenseCategories = [];
+  let currentType = null; // 'ingreso' o 'egreso'
+  let movements = [];
+  let autoId = 1;
+
+  const currentFilters = {
+    from: null,
+    to: null,
+    text: ''
+  };
+
+  // Helpers numéricos
+  const parseNum = (v) => {
+    if (v === null || v === undefined) return 0;
+    const str = String(v).replace(',', '.');
+    const n = parseFloat(str);
     return isNaN(n) ? 0 : n;
-  }
-  function fix2(n) {
-    return Math.round(n * 100) / 100;
+  };
+
+  const fix2 = (n) => Math.round(n * 100) / 100;
+
+  // ==========================
+  // Inicialización
+  // ==========================
+
+  // Fecha por defecto = hoy
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  if (dateInput) {
+    dateInput.value = hoyISO;
   }
 
-  // --- Cargar categorías desde backend ---
-  async function initCategorias() {
-    try {
-      msgCategorias.style.display = 'none';
-      categoriaSelect.innerHTML = '<option value="">Cargando categorías...</option>';
+  // Foco en evento para flujo cómodo
+  eventInput && eventInput.focus();
 
-      const { incomes, expenses } = await loadChurchCategories();
-      if (!incomes.length && !expenses.length) {
-        categoriaSelect.innerHTML = '<option value="">No se encontraron categorías en church_data</option>';
-        msgCategorias.textContent = 'Revise la hoja "church_data": columna A (ingresos) y columna B (egresos), desde la fila 2.';
-        msgCategorias.style.display = 'block';
-        return;
-      }
-      // Por defecto se muestran ingresos (porque el toggle inicia en ingreso)
-      fillCategoriaOptions('ingreso');
-    } catch (err) {
-      categoriaSelect.innerHTML = '<option value="">No se pudieron cargar las categorías</option>';
-      msgCategorias.textContent = 'No se pudo conectar con /api/church-data. Revise las variables de entorno en Vercel.';
-      msgCategorias.style.display = 'block';
+  // 1) Cargar categorías desde Google Sheets
+  try {
+    const cats = await loadChurchCategories();
+    incomeCategories = cats.incomes || [];
+    expenseCategories = cats.expenses || [];
+  } catch (e) {
+    Swal.fire(
+      'Error al cargar categorías',
+      'No se pudieron cargar las categorías de ingresos y egresos. Verifique la conexión o consulte al administrador.',
+      'error'
+    );
+  }
+
+  // 2) Cargar datos previos desde JSONBin (si existen)
+  try {
+    const record = await loadChurchDataFromJSONBin();
+    if (record && Array.isArray(record.items)) {
+      movements = record.items.map((it, idx) => ({
+        id: it.id || idx + 1,
+        fecha: it.fecha || hoyISO,
+        evento: it.evento || '',
+        tipo: it.tipo || 'ingreso',
+        categoria: it.categoria || '',
+        monto: parseNum(it.monto),
+        descripcion: it.descripcion || ''
+      }));
+      autoId = movements.length ? Math.max(...movements.map((m) => m.id)) + 1 : 1;
+    }
+  } catch (e) {
+    console.error('Error al cargar datos previos:', e);
+  }
+
+  // Render inicial
+  renderAll();
+
+  // ==========================
+  // Manejo de tipo ingreso/egreso
+  // ==========================
+
+  function setCurrentType(type) {
+    currentType = type; // 'ingreso' | 'egreso'
+    populateCategorySelect();
+  }
+
+  function populateCategorySelect() {
+    const cats =
+      currentType === 'ingreso' ? incomeCategories : currentType === 'egreso' ? expenseCategories : [];
+
+    const previousValue = categorySelect.value;
+    categorySelect.innerHTML = '<option value="">Seleccione una categoría…</option>';
+
+    (cats || []).forEach((name) => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      categorySelect.appendChild(opt);
+    });
+
+    // Si la categoría anterior existe en las nuevas opciones, la mantenemos
+    if (cats.includes(previousValue)) {
+      categorySelect.value = previousValue;
+    } else {
+      categorySelect.value = '';
     }
   }
 
-  function fillCategoriaOptions(tipo) {
-    categoriaSelect.innerHTML = '';
-    const list = (tipo === 'ingreso') ? CHURCH_INCOME_CATEGORIES : CHURCH_EXPENSE_CATEGORIES;
-    if (!list || !list.length) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.textContent = 'No hay categorías configuradas para ' + (tipo === 'ingreso' ? 'ingresos' : 'egresos');
-      categoriaSelect.appendChild(opt);
+  btnTipoIngreso.addEventListener('change', () => {
+    if (btnTipoIngreso.checked) {
+      setCurrentType('ingreso');
+    }
+  });
+
+  btnTipoEgreso.addEventListener('change', () => {
+    if (btnTipoEgreso.checked) {
+      setCurrentType('egreso');
+    }
+  });
+
+  // ==========================
+  // Agregar movimiento
+  // ==========================
+
+  btnAddMovement.addEventListener('click', () => {
+    addMovement();
+  });
+
+  // Enter en monto -> agregar
+  amountInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addMovement();
+    }
+  });
+
+  function addMovement() {
+    const fecha = (dateInput.value || '').trim();
+    const evento = (eventInput.value || '').trim();
+    const tipo = currentType;
+    const categoria = categorySelect.value;
+    const monto = parseNum(amountInput.value);
+    const descripcion = (descriptionInput.value || '').trim();
+
+    // Validaciones sencillas pero claras
+    if (!fecha) {
+      Swal.fire('Fecha requerida', 'Por favor indique la fecha del movimiento.', 'warning');
       return;
     }
-    const opt0 = document.createElement('option');
-    opt0.value = '';
-    opt0.textContent = 'Seleccione una categoría';
-    categoriaSelect.appendChild(opt0);
+    if (!tipo) {
+      Swal.fire('Tipo requerido', 'Seleccione si el movimiento es un ingreso o un egreso.', 'warning');
+      return;
+    }
+    if (!categoria) {
+      Swal.fire('Categoría requerida', 'Seleccione una categoría para el movimiento.', 'warning');
+      return;
+    }
+    if (!(monto > 0)) {
+      Swal.fire('Monto inválido', 'El monto debe ser mayor que 0.', 'warning');
+      return;
+    }
 
-    list.forEach((c) => {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      categoriaSelect.appendChild(opt);
+    // Crear objeto movimiento
+    const movement = {
+      id: autoId++,
+      fecha,
+      evento,
+      tipo,
+      categoria,
+      monto: fix2(monto),
+      descripcion
+    };
+
+    movements.push(movement);
+
+    // Limpiar solo lo necesario
+    amountInput.value = '';
+    descriptionInput.value = '';
+    amountInput.focus();
+
+    renderAll();
+  }
+
+  // ==========================
+  // Filtros
+  // ==========================
+
+  btnApplyFilters.addEventListener('click', () => {
+    currentFilters.from = filterFrom.value || null;
+    currentFilters.to = filterTo.value || null;
+    currentFilters.text = (filterText.value || '').trim().toLowerCase();
+    renderAll();
+  });
+
+  btnClearFilters.addEventListener('click', () => {
+    currentFilters.from = null;
+    currentFilters.to = null;
+    currentFilters.text = '';
+    filterFrom.value = '';
+    filterTo.value = '';
+    filterText.value = '';
+    renderAll();
+  });
+
+  function applyFilters(list) {
+    const from = currentFilters.from;
+    const to = currentFilters.to;
+    const text = currentFilters.text;
+
+    return list.filter((m) => {
+      if (from && m.fecha < from) return false;
+      if (to && m.fecha > to) return false;
+
+      if (text) {
+        const haystack = [
+          m.evento || '',
+          m.descripcion || '',
+          m.categoria || '',
+          m.tipo || ''
+        ]
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(text)) return false;
+      }
+
+      return true;
     });
   }
 
-  tipoIngresoRadio.addEventListener('change', () => {
-    if (tipoIngresoRadio.checked) fillCategoriaOptions('ingreso');
-  });
-  tipoEgresoRadio.addEventListener('change', () => {
-    if (tipoEgresoRadio.checked) fillCategoriaOptions('egreso');
-  });
-
-  await initCategorias();
-
-  // --- Manejo de tabla ---
-  function renumber() {
-    [...movBody.getElementsByTagName('tr')].forEach((row, idx) => {
-      row.cells[0].textContent = idx + 1;
-    });
+  function updateFilterStatus(filteredCount, totalCount) {
+    if (!filterStatusEl) return;
+    const hasFilters = currentFilters.from || currentFilters.to || currentFilters.text;
+    if (!hasFilters) {
+      filterStatusEl.textContent = `Mostrando todos los movimientos (${totalCount})`;
+    } else {
+      filterStatusEl.textContent = `Filtros activos: ${filteredCount} de ${totalCount} movimientos`;
+    }
   }
 
-  function recalcTotals() {
+  // ==========================
+  // Render de tabla y totales
+  // ==========================
+
+  function calculateTotals(list) {
     let ingresos = 0;
-    let egresos  = 0;
+    let egresos = 0;
 
-    [...movBody.getElementsByTagName('tr')].forEach((tr) => {
-      const tipo  = tr.dataset.tipo || '';
-      const monto = parseNum(tr.dataset.monto || tr.cells[5].innerText.replace(/[^\d.-]/g, ''));
-      if (tipo === 'ingreso') ingresos += monto;
-      else if (tipo === 'egreso') egresos += monto;
+    (list || []).forEach((m) => {
+      if (m.tipo === 'ingreso') ingresos += m.monto;
+      else if (m.tipo === 'egreso') egresos += m.monto;
     });
 
     ingresos = fix2(ingresos);
-    egresos  = fix2(egresos);
+    egresos = fix2(egresos);
     const saldo = fix2(ingresos - egresos);
 
-    totalIngresosEl.textContent = '$' + ingresos.toFixed(2);
-    totalEgresosEl.textContent  = '$' + egresos.toFixed(2);
-
-    saldoEl.textContent = '$' + saldo.toFixed(2);
-    saldoEl.classList.remove('text-success', 'text-danger');
-    if (saldo >= 0) saldoEl.classList.add('text-success');
-    else saldoEl.classList.add('text-danger');
+    return { ingresos, egresos, saldo };
   }
 
-  function addRowFromData(item) {
-    const tr = document.createElement('tr');
-    tr.dataset.tipo  = item.tipo || '';
-    tr.dataset.monto = item.monto != null ? String(item.monto) : '0';
+  function updateSummary(listForSummary) {
+    const { ingresos, egresos, saldo } = calculateTotals(listForSummary);
 
-    const tipoLabel = item.tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
-    const tipoBadgeClass = item.tipo === 'ingreso' ? 'bg-success' : 'bg-danger';
+    totalIncomesEl.textContent = `$${ingresos.toLocaleString('es-SV', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
 
-    tr.innerHTML = `
-      <td class="text-center"></td>
-      <td>${item.fecha || ''}</td>
-      <td>${item.evento || ''}</td>
-      <td class="text-nowrap">
-        <span class="badge ${tipoBadgeClass}">${tipoLabel}</span>
-      </td>
-      <td>${item.categoria || ''}</td>
-      <td class="text-end">$${fix2(item.monto || 0).toFixed(2)}</td>
-      <td>${item.descripcion || ''}</td>
-      <td class="text-center">
-        <button class="btn btn-sm btn-outline-danger btn-delete" title="Eliminar">
-          <i class="fa-solid fa-trash-can"></i>
-        </button>
-      </td>
-    `;
-    movBody.appendChild(tr);
-    renumber();
-    recalcTotals();
+    totalExpensesEl.textContent = `$${egresos.toLocaleString('es-SV', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
 
-    const delBtn = tr.querySelector('.btn-delete');
-    delBtn.addEventListener('click', () => {
-      Swal.fire({
-        title: '¿Eliminar registro?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Eliminar',
-        cancelButtonText: 'Cancelar'
-      }).then((res) => {
-        if (res.isConfirmed) {
-          tr.remove();
-          renumber();
-          recalcTotals();
-        }
-      });
+    balanceEl.textContent = `$${saldo.toLocaleString('es-SV', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+
+    balanceEl.classList.remove('saldo-positive', 'saldo-negative', 'saldo-neutral');
+
+    if (saldo > 0) {
+      balanceEl.classList.add('saldo-positive');
+    } else if (saldo < 0) {
+      balanceEl.classList.add('saldo-negative');
+    } else {
+      balanceEl.classList.add('saldo-neutral');
+    }
+  }
+
+  function renderTable(filteredList) {
+    movementsBody.innerHTML = '';
+
+    filteredList.forEach((m, idx) => {
+      const tr = document.createElement('tr');
+
+      const badgeClass = m.tipo === 'ingreso' ? 'badge-tipo-ingreso' : 'badge-tipo-egreso';
+      const badgeText = m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
+
+      tr.innerHTML = `
+        <td class="text-center">${idx + 1}</td>
+        <td>${m.fecha}</td>
+        <td>${escapeHTML(m.evento || '')}</td>
+        <td>
+          <span class="${badgeClass}">
+            ${badgeText}
+          </span>
+        </td>
+        <td>${escapeHTML(m.categoria || '')}</td>
+        <td class="text-end">
+          $${m.monto.toLocaleString('es-SV', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}
+        </td>
+        <td>${escapeHTML(m.descripcion || '')}</td>
+        <td class="text-center">
+          <button
+            class="btn btn-outline-danger btn-sm btn-delete-movement"
+            data-id="${m.id}"
+            title="Eliminar este movimiento"
+          >
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </td>
+      `;
+
+      movementsBody.appendChild(tr);
     });
   }
 
-  // --- Cargar datos guardados previamente en JSONBin ---
-  async function loadExistingData() {
-    const record = await loadChurchData();
-    if (record && Array.isArray(record.movimientos)) {
-      record.movimientos.forEach(addRowFromData);
-      if (record.meta && record.meta.updatedAt) {
-        lastSavedEl.innerHTML =
-          '<i class="fa-solid fa-clock-rotate-left me-1"></i> Última actualización: ' +
-          formatSV(record.meta.updatedAt);
+  function updateToolbarButtons() {
+    const hasMovements = movements.length > 0;
+    btnSaveCloud.disabled = !hasMovements;
+    btnExportPDF.disabled = !hasMovements;
+    btnExportExcel.disabled = !hasMovements;
+    btnClearAll.disabled = !hasMovements;
+  }
+
+  function renderAll() {
+    const filtered = applyFilters(movements);
+    renderTable(filtered);
+    updateSummary(filtered);
+    updateFilterStatus(filtered.length, movements.length);
+    updateToolbarButtons();
+  }
+
+  // ==========================
+  // Eliminar movimiento
+  // ==========================
+
+  movementsBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-delete-movement');
+    if (!btn) return;
+
+    const id = Number(btn.dataset.id);
+    const movement = movements.find((m) => m.id === id);
+    const label = movement
+      ? `${movement.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} de $${movement.monto.toFixed(2)}`
+      : 'este movimiento';
+
+    Swal.fire({
+      title: '¿Eliminar movimiento?',
+      text: `Se eliminará ${label}. Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        movements = movements.filter((m) => m.id !== id);
+        renderAll();
       }
-    }
-    recalcTotals();
-  }
-
-  await loadExistingData();
-
-  // --- Agregar nuevo registro ---
-  function getSelectedTipo() {
-    return tipoIngresoRadio.checked ? 'ingreso' : 'egreso';
-  }
-
-  btnAgregar.addEventListener('click', () => {
-    const fecha = fechaInput.value || today;
-    const evento = eventoInput.value.trim();
-    const tipo = getSelectedTipo();
-    const categoria = categoriaSelect.value || '';
-    const monto = parseNum(montoInput.value);
-    const descripcion = descripcionInput.value.trim();
-
-    if (!(monto > 0)) {
-      Swal.fire('Monto requerido', 'Por favor ingrese un monto mayor a 0.', 'info');
-      montoInput.focus();
-      return;
-    }
-
-    if (!categoria) {
-      Swal.fire('Categoría recomendada', 'Seleccione una categoría para llevar un mejor control.', 'info');
-      categoriaSelect.focus();
-      return;
-    }
-
-    const item = { fecha, evento, tipo, categoria, monto, descripcion };
-    addRowFromData(item);
-
-    eventoInput.value = '';
-    montoInput.value = '';
-    descripcionInput.value = '';
-    eventoInput.focus();
+    });
   });
 
-  // --- Guardar en JSONBin ---
-  btnGuardar.addEventListener('click', () => {
-    const movimientos = [...movBody.getElementsByTagName('tr')].map((tr) => {
-      const fecha = tr.cells[1].innerText.trim();
-      const evento = tr.cells[2].innerText.trim();
-      const tipoText = tr.dataset.tipo || (tr.cells[3].innerText.includes('Ingreso') ? 'ingreso' : 'egreso');
-      const categoria = tr.cells[4].innerText.trim();
-      const monto = parseNum(tr.dataset.monto || tr.cells[5].innerText.replace(/[^\d.-]/g, ''));
-      const descripcion = tr.cells[6].innerText.trim();
-      return { fecha, evento, tipo: tipoText, categoria, monto, descripcion };
-    });
+  // ==========================
+  // Guardar en la nube (JSONBin)
+  // ==========================
 
-    const totalIng = parseNum(totalIngresosEl.textContent.replace(/[^\d.-]/g, ''));
-    const totalEgr = parseNum(totalEgresosEl.textContent.replace(/[^\d.-]/g, ''));
-    const saldoVal = parseNum(saldoEl.textContent.replace(/[^\d.-]/g, ''));
+  btnSaveCloud.addEventListener('click', () => {
+    if (!movements.length) return;
+
+    const { ingresos, egresos, saldo } = calculateTotals(movements);
+    const nowIso = new Date().toISOString();
 
     const payload = {
       meta: {
         iglesia: 'Misión Pentecostal de Jesucristo',
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       },
-      movimientos,
+      items: movements.map((m) => ({
+        id: m.id,
+        fecha: m.fecha,
+        evento: m.evento,
+        tipo: m.tipo,
+        categoria: m.categoria,
+        monto: m.monto,
+        descripcion: m.descripcion
+      })),
       totales: {
-        ingresos: fix2(totalIng),
-        egresos: fix2(totalEgr),
-        saldo: fix2(saldoVal)
+        ingresos,
+        egresos,
+        saldo
       }
     };
 
-    saveChurchData(payload)
+    saveChurchDataToJSONBin(payload)
       .then(() => {
-        lastSavedEl.innerHTML =
-          '<i class="fa-solid fa-clock-rotate-left me-1"></i> Última actualización: ' +
-          formatSV(payload.meta.updatedAt);
-        Swal.fire('Guardado', 'Los datos se guardaron correctamente.', 'success');
+        Swal.fire('Guardado', 'La información se guardó correctamente en la nube.', 'success');
       })
       .catch((e) => {
-        console.error(e);
         Swal.fire('Error', String(e), 'error');
       });
   });
 
-  // --- Exportar a PDF ---
-  btnPDF.addEventListener('click', () => {
-    if (!movBody.rows.length) {
-      Swal.fire('Sin datos', 'No hay registros para exportar.', 'info');
-      return;
-    }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const fechaHoy = new Date().toISOString().split('T')[0];
+  // ==========================
+  // Exportar PDF
+  // ==========================
 
-    doc.setFontSize(12);
-    doc.text('Misión Pentecostal de Jesucristo', 10, 10);
-    doc.text('Control de ingresos y egresos', 10, 18);
-    doc.text('Fecha de reporte: ' + fechaHoy, 10, 26);
-
-    const rows = [...movBody.getElementsByTagName('tr')].map((tr, idx) => {
-      const fecha = tr.cells[1].innerText.trim();
-      const evento = tr.cells[2].innerText.trim();
-      const tipo   = tr.dataset.tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
-      const cat    = tr.cells[4].innerText.trim();
-      const monto  = tr.cells[5].innerText.trim();
-      const desc   = tr.cells[6].innerText.trim();
-      return [idx + 1, fecha, evento, tipo, cat, monto, desc];
-    });
-
-    doc.autoTable({
-      startY: 34,
-      head: [['#', 'Fecha', 'Evento', 'Tipo', 'Categoría', 'Monto', 'Descripción']],
-      body: rows,
-      styles: { fontSize: 9, cellPadding: 2 },
-      columnStyles: {
-        0: { cellWidth: 8 },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 18 },
-        4: { cellWidth: 30 },
-        5: { cellWidth: 20 },
-        6: { cellWidth: 60 }
-      }
-    });
-
-    const y = doc.lastAutoTable.finalY + 6;
-    doc.text(
-      'Total Ingresos: ' + totalIngresosEl.textContent +
-      '   |   Total Egresos: ' + totalEgresosEl.textContent +
-      '   |   Saldo: ' + saldoEl.textContent,
-      10,
-      y
-    );
-
-    doc.save('MPJ_ingresos_egresos_' + fechaHoy + '.pdf');
+  btnExportPDF.addEventListener('click', () => {
+    if (!movements.length) return;
+    exportPDF();
   });
 
-  // --- Exportar a Excel ---
-  btnExcel.addEventListener('click', () => {
-    if (!movBody.rows.length) {
-      Swal.fire('Sin datos', 'No hay registros para exportar.', 'info');
-      return;
-    }
-    const fechaHoy = new Date().toISOString().split('T')[0];
-    const data = [['Fecha', 'Evento', 'Tipo', 'Categoría', 'Monto', 'Descripción']];
+  function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-    [...movBody.getElementsByTagName('tr')].forEach((tr) => {
-      const fecha = tr.cells[1].innerText.trim();
-      const evento = tr.cells[2].innerText.trim();
-      const tipoText = tr.dataset.tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
-      const cat = tr.cells[4].innerText.trim();
-      const monto = tr.cells[5].innerText.replace(/[^\d.-]/g, '');
-      const desc = tr.cells[6].innerText.trim();
-      data.push([fecha, evento, tipoText, cat, parseFloat(monto) || 0, desc]);
+    const filtered = applyFilters(movements);
+    const { ingresos, egresos, saldo } = calculateTotals(filtered);
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    doc.setFontSize(14);
+    doc.text('Misión Pentecostal de Jesucristo', 14, 16);
+    doc.setFontSize(11);
+    doc.text('Control de ingresos y egresos', 14, 23);
+    doc.text(`Fecha de generación: ${hoy}`, 14, 30);
+
+    doc.text(
+      `Ingresos: $${ingresos.toFixed(2)}   |   Egresos: $${egresos.toFixed(2)}   |   Saldo: $${saldo.toFixed(
+        2
+      )}`,
+      14,
+      38
+    );
+
+    const body = filtered.map((m, idx) => [
+      idx + 1,
+      m.fecha,
+      m.evento || '',
+      m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso',
+      m.categoria || '',
+      m.monto.toFixed(2),
+      m.descripcion || ''
+    ]);
+
+    doc.autoTable({
+      startY: 44,
+      head: [['#', 'Fecha', 'Evento', 'Tipo', 'Categoría', 'Monto', 'Descripción']],
+      body,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [240, 240, 240] }
+    });
+
+    const filename = `MPJ_movimientos_${hoy}.pdf`;
+    doc.save(filename);
+  }
+
+  // ==========================
+  // Exportar Excel
+  // ==========================
+
+  btnExportExcel.addEventListener('click', () => {
+    if (!movements.length) return;
+    exportExcel();
+  });
+
+  function exportExcel() {
+    const filtered = applyFilters(movements);
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    const data = [
+      ['Fecha', 'Evento', 'Tipo', 'Categoría', 'Monto', 'Descripción']
+    ];
+
+    filtered.forEach((m) => {
+      data.push([
+        m.fecha,
+        m.evento || '',
+        m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso',
+        m.categoria || '',
+        m.monto,
+        m.descripcion || ''
+      ]);
     });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, 'MPJ');
+    XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
 
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
+
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'MPJ_ingresos_egresos_' + fechaHoy + '.xlsx';
+    a.download = `MPJ_movimientos_${hoy}.xlsx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-  });
+  }
 
-  // --- Limpiar todo ---
-  btnLimpiar.addEventListener('click', () => {
-    if (!movBody.rows.length &&
-        !eventoInput.value.trim() &&
-        !montoInput.value.trim() &&
-        !descripcionInput.value.trim()) {
-      return;
-    }
+  // ==========================
+  // Limpiar todo
+  // ==========================
+
+  btnClearAll.addEventListener('click', () => {
+    if (!movements.length) return;
 
     Swal.fire({
-      title: '¿Limpiar todo?',
-      text: 'Se vaciará la tabla y el formulario. Luego puede volver a guardar.',
+      title: '¿Limpiar todos los movimientos?',
+      text: 'Se borrarán todos los ingresos y egresos de la lista actual.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Sí, limpiar',
+      confirmButtonText: 'Sí, borrar todo',
       cancelButtonText: 'Cancelar'
     }).then((res) => {
       if (res.isConfirmed) {
-        movBody.innerHTML = '';
-        eventoInput.value = '';
-        montoInput.value = '';
-        descripcionInput.value = '';
-        fechaInput.value = today;
-        recalcTotals();
-        lastSavedEl.innerHTML =
-          '<i class="fa-solid fa-clock-rotate-left me-1"></i> Aún no guardado.';
+        movements = [];
+        autoId = 1;
+        renderAll();
+
+        // Opcional: guardar vacío en JSONBin
+        const nowIso = new Date().toISOString();
+        const payload = {
+          meta: {
+            iglesia: 'Misión Pentecostal de Jesucristo',
+            updatedAt: nowIso
+          },
+          items: [],
+          totales: {
+            ingresos: 0,
+            egresos: 0,
+            saldo: 0
+          }
+        };
+
+        saveChurchDataToJSONBin(payload).catch((e) =>
+          console.error('Error al guardar vacío en JSONBin:', e)
+        );
       }
     });
   });
+
+  // ==========================
+  // Helper simple para evitar inyección en HTML
+  // ==========================
+
+  function escapeHTML(str) {
+    return (str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 });
