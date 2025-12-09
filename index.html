@@ -20,276 +20,330 @@
 <body class="bg-light">
 
   <!-- NAVBAR SUPERIOR -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-    <div class="container-fluid">
-      <div class="d-flex flex-column">
-        <span class="navbar-brand mb-0 fw-semibold fs-5">
-          Misión Pentecostal de Jesucristo
-        </span>
-        <small class="text-white-50 church-subtitle">
-          Control de ingresos y egresos
-        </small>
+  <nav class="navbar navbar-dark church-navbar shadow-sm">
+    <div class="container-xxl d-flex flex-column flex-md-row align-items-md-center py-2">
+      <div class="flex-grow-1 text-center text-md-start">
+        <div class="d-flex flex-column align-items-center align-items-md-start">
+          <span class="navbar-brand mb-0 fw-semibold fs-4">
+            Misión Pentecostal de Jesucristo
+          </span>
+          <small class="text-white-50 church-subtitle">
+            Control de ingresos y egresos
+          </small>
+        </div>
+      </div>
+      <div class="mt-2 mt-md-0 text-center text-md-end small text-white-50">
+        <i class="fa-solid fa-church me-1"></i>
+        Herramienta interna para la tesorería
       </div>
     </div>
   </nav>
 
   <!-- CONTENIDO PRINCIPAL -->
-  <main class="container-fluid py-4">
+  <main class="container-xxl py-4">
     <div class="row g-4">
 
       <!-- COLUMNA IZQUIERDA: RESUMEN + FILTROS -->
       <div class="col-lg-4">
+
         <!-- Resumen general -->
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-white border-0 pb-1">
-            <h5 class="card-title mb-0 d-flex align-items-center gap-2">
-              <i class="fa-solid fa-chart-pie text-primary"></i>
-              Resumen general
-            </h5>
+        <section aria-labelledby="resumenGeneralTitle">
+          <div class="card shadow-sm mb-4 church-card">
+            <div class="card-header bg-white border-0 pb-1 d-flex align-items-center">
+              <div class="icon-circle me-2">
+                <i class="fa-solid fa-chart-pie text-primary"></i>
+              </div>
+              <div>
+                <h5 id="resumenGeneralTitle" class="card-title mb-0">
+                  Resumen general
+                </h5>
+                <small class="text-muted">
+                  Vista rápida del estado económico.
+                </small>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="summary-row mb-3">
+                <div class="summary-label">Total de ingresos</div>
+                <div id="totalIncomes" class="summary-number text-success">
+                  $0.00
+                </div>
+              </div>
+
+              <div class="summary-row mb-3">
+                <div class="summary-label">Total de egresos</div>
+                <div id="totalExpenses" class="summary-number text-danger">
+                  $0.00
+                </div>
+              </div>
+
+              <hr class="my-3">
+
+              <div class="summary-row">
+                <div class="summary-label">Saldo</div>
+                <div id="balance" class="summary-number saldo-neutral">
+                  $0.00
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <span id="filterStatus" class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis small px-3 py-2">
+                  Mostrando todos los movimientos
+                </span>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <p class="mb-2 text-muted small">
-              Totales de los movimientos registrados.
-            </p>
-            <div class="mb-3">
-              <div class="summary-label">Total de ingresos:</div>
-              <div id="totalIncomes" class="summary-number text-success">
-                $0.00
-              </div>
-            </div>
-            <div class="mb-3">
-              <div class="summary-label">Total de egresos:</div>
-              <div id="totalExpenses" class="summary-number text-danger">
-                $0.00
-              </div>
-            </div>
-            <div>
-              <div class="summary-label">Saldo:</div>
-              <div id="balance" class="summary-number saldo-neutral">
-                $0.00
-              </div>
-            </div>
-            <div class="mt-3">
-              <span id="filterStatus" class="badge bg-secondary-subtle text-secondary-emphasis small">
-                Mostrando todos los movimientos
-              </span>
-            </div>
-          </div>
-        </div>
+        </section>
 
         <!-- Filtros rápidos -->
-        <div class="card shadow-sm">
-          <div class="card-header bg-white border-0 pb-1">
-            <h5 class="card-title mb-0 d-flex align-items-center gap-2">
-              <i class="fa-solid fa-filter text-primary"></i>
-              Filtros rápidos
-            </h5>
+        <section aria-labelledby="filtrosRapidosTitle">
+          <div class="card shadow-sm church-card">
+            <div class="card-header bg-white border-0 pb-1 d-flex align-items-center">
+              <div class="icon-circle me-2">
+                <i class="fa-solid fa-filter text-primary"></i>
+              </div>
+              <div>
+                <h5 id="filtrosRapidosTitle" class="card-title mb-0">
+                  Filtros rápidos
+                </h5>
+                <small class="text-muted">
+                  Para buscar movimientos específicos.
+                </small>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label for="filterFrom" class="form-label fw-semibold">
+                  Fecha desde
+                </label>
+                <input type="date" id="filterFrom" class="form-control form-control-lg">
+              </div>
+              <div class="mb-3">
+                <label for="filterTo" class="form-label fw-semibold">
+                  Fecha hasta
+                </label>
+                <input type="date" id="filterTo" class="form-control form-control-lg">
+              </div>
+              <div class="mb-3">
+                <label for="filterText" class="form-label fw-semibold">
+                  Buscar por evento o descripción
+                </label>
+                <input
+                  type="text"
+                  id="filterText"
+                  class="form-control form-control-lg"
+                  placeholder="Ej. Vigilia, campaña, luz, agua..."
+                >
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button id="btnApplyFilters" class="btn btn-primary btn-lg flex-grow-1">
+                  <i class="fa-solid fa-magnifying-glass me-1"></i>
+                  Aplicar filtros
+                </button>
+                <button id="btnClearFilters" class="btn btn-outline-secondary btn-sm flex-shrink-0">
+                  Quitar filtros
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <div class="mb-3">
-              <label for="filterFrom" class="form-label fw-semibold">
-                Fecha desde
-              </label>
-              <input type="date" id="filterFrom" class="form-control form-control-lg">
-            </div>
-            <div class="mb-3">
-              <label for="filterTo" class="form-label fw-semibold">
-                Fecha hasta
-              </label>
-              <input type="date" id="filterTo" class="form-control form-control-lg">
-            </div>
-            <div class="mb-3">
-              <label for="filterText" class="form-label fw-semibold">
-                Buscar por evento o descripción
-              </label>
-              <input
-                type="text"
-                id="filterText"
-                class="form-control form-control-lg"
-                placeholder="Ej. Vigilia, campaña, luz, agua..."
-              >
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-              <button id="btnApplyFilters" class="btn btn-primary btn-lg flex-fill">
-                <i class="fa-solid fa-magnifying-glass me-1"></i>
-                Aplicar filtros
-              </button>
-              <button id="btnClearFilters" class="btn btn-outline-secondary btn-sm">
-                Quitar filtros
-              </button>
-            </div>
-          </div>
-        </div>
+        </section>
+
       </div>
 
       <!-- COLUMNA DERECHA: FORMULARIO + TABLA -->
       <div class="col-lg-8">
-        <!-- Nuevo movimiento -->
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-white border-0 pb-1">
-            <h5 class="card-title mb-0 d-flex align-items-center gap-2">
-              <i class="fa-solid fa-hand-holding-dollar text-success"></i>
-              Registrar ingreso o egreso
-            </h5>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <!-- Fecha -->
-              <div class="col-md-4">
-                <label for="dateInput" class="form-label fw-semibold">
-                  Fecha <span class="text-danger">*</span>
-                </label>
-                <input type="date" id="dateInput" class="form-control form-control-lg">
-              </div>
 
-              <!-- Evento -->
-              <div class="col-md-8">
-                <label for="eventInput" class="form-label fw-semibold">
-                  Nombre del evento
-                  <span class="text-muted small">(opcional)</span>
-                </label>
-                <input
-                  type="text"
-                  id="eventInput"
-                  class="form-control form-control-lg"
-                  placeholder="Ej. Culto general, vigilia, campaña evangelística..."
-                >
+        <!-- NUEVO MOVIMIENTO -->
+        <section aria-labelledby="nuevoMovimientoTitle">
+          <div class="card shadow-sm mb-4 church-card">
+            <div class="card-header bg-white border-0 pb-1 d-flex align-items-center">
+              <div class="icon-circle me-2">
+                <i class="fa-solid fa-hand-holding-dollar text-success"></i>
               </div>
-
-              <!-- Tipo de movimiento -->
-              <div class="col-md-6">
-                <label class="form-label fw-semibold d-block">
-                  Tipo de movimiento <span class="text-danger">*</span>
-                </label>
-                <div class="btn-group w-100" role="group" aria-label="Tipo de movimiento">
-                  <input type="radio" class="btn-check" name="tipoMovimiento" id="btnTipoIngreso" autocomplete="off" value="ingreso">
-                  <label class="btn btn-outline-success btn-lg" for="btnTipoIngreso">
-                    <i class="fa-solid fa-arrow-down"></i> Ingreso
+              <div>
+                <h5 id="nuevoMovimientoTitle" class="card-title mb-0">
+                  Registrar ingreso o egreso
+                </h5>
+                <small class="text-muted">
+                  Complete los datos del movimiento y agréguelo a la lista.
+                </small>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <!-- Fecha -->
+                <div class="col-md-4">
+                  <label for="dateInput" class="form-label fw-semibold">
+                    Fecha <span class="text-danger">*</span>
                   </label>
+                  <input type="date" id="dateInput" class="form-control form-control-lg">
+                </div>
 
-                  <input type="radio" class="btn-check" name="tipoMovimiento" id="btnTipoEgreso" autocomplete="off" value="egreso">
-                  <label class="btn btn-outline-danger btn-lg" for="btnTipoEgreso">
-                    <i class="fa-solid fa-arrow-up"></i> Egreso
+                <!-- Evento -->
+                <div class="col-md-8">
+                  <label for="eventInput" class="form-label fw-semibold">
+                    Nombre del evento
+                    <span class="text-muted small">(opcional)</span>
                   </label>
-                </div>
-                <div class="form-text">
-                  Seleccione si el movimiento es dinero que entra (ingreso) o que sale (egreso).
-                </div>
-              </div>
-
-              <!-- Categoría -->
-              <div class="col-md-6">
-                <label for="categorySelect" class="form-label fw-semibold">
-                  Categoría <span class="text-danger">*</span>
-                </label>
-                <select id="categorySelect" class="form-select form-select-lg">
-                  <option value="">Seleccione una categoría…</option>
-                  <!-- Se llena dinámicamente -->
-                </select>
-                <div class="form-text">
-                  Las categorías se cargan desde la hoja <strong>church_data</strong>.
-                </div>
-              </div>
-
-              <!-- Monto -->
-              <div class="col-md-6">
-                <label for="amountInput" class="form-label fw-semibold">
-                  Monto en dólares <span class="text-danger">*</span>
-                </label>
-                <div class="input-group input-group-lg">
-                  <span class="input-group-text">$</span>
                   <input
-                    type="number"
-                    id="amountInput"
-                    class="form-control"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
+                    type="text"
+                    id="eventInput"
+                    class="form-control form-control-lg"
+                    placeholder="Ej. Culto general, vigilia, campaña evangelística..."
                   >
                 </div>
+
+                <!-- Tipo de movimiento -->
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold d-block">
+                    Tipo de movimiento <span class="text-danger">*</span>
+                  </label>
+                  <div class="btn-group w-100 church-toggle-group" role="group" aria-label="Tipo de movimiento">
+                    <input type="radio" class="btn-check" name="tipoMovimiento" id="btnTipoIngreso" autocomplete="off" value="ingreso">
+                    <label class="btn btn-outline-success btn-lg w-50" for="btnTipoIngreso">
+                      <i class="fa-solid fa-arrow-down-long me-1"></i>
+                      Ingreso
+                    </label>
+
+                    <input type="radio" class="btn-check" name="tipoMovimiento" id="btnTipoEgreso" autocomplete="off" value="egreso">
+                    <label class="btn btn-outline-danger btn-lg w-50" for="btnTipoEgreso">
+                      <i class="fa-solid fa-arrow-up-long me-1"></i>
+                      Egreso
+                    </label>
+                  </div>
+                  <div class="form-text">
+                    Dinero que entra a la iglesia (ingreso) o que se utiliza/paga (egreso).
+                  </div>
+                </div>
+
+                <!-- Categoría -->
+                <div class="col-md-6">
+                  <label for="categorySelect" class="form-label fw-semibold">
+                    Categoría <span class="text-danger">*</span>
+                  </label>
+                  <select id="categorySelect" class="form-select form-select-lg">
+                    <option value="">Seleccione una categoría…</option>
+                    <!-- Se llena dinámicamente -->
+                  </select>
+                  <div class="form-text">
+                    Las categorías se leen de la hoja <strong>church_data</strong>.
+                  </div>
+                </div>
+
+                <!-- Monto -->
+                <div class="col-md-6">
+                  <label for="amountInput" class="form-label fw-semibold">
+                    Monto en dólares <span class="text-danger">*</span>
+                  </label>
+                  <div class="input-group input-group-lg">
+                    <span class="input-group-text fw-semibold">$</span>
+                    <input
+                      type="number"
+                      id="amountInput"
+                      class="form-control"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                    >
+                  </div>
+                  <div class="form-text">
+                    Escriba solo números, el sistema pone los decimales.
+                  </div>
+                </div>
+
+                <!-- Descripción -->
+                <div class="col-md-6">
+                  <label for="descriptionInput" class="form-label fw-semibold">
+                    Descripción / Detalle
+                  </label>
+                  <textarea
+                    id="descriptionInput"
+                    class="form-control form-control-lg"
+                    rows="2"
+                    placeholder="Ej. Ofrenda especial, pago de recibo de luz, compra de sillas..."
+                  ></textarea>
+                </div>
               </div>
 
-              <!-- Descripción -->
-              <div class="col-md-6">
-                <label for="descriptionInput" class="form-label fw-semibold">
-                  Descripción / Detalle
-                </label>
-                <textarea
-                  id="descriptionInput"
-                  class="form-control form-control-lg"
-                  rows="2"
-                  placeholder="Ej. Ofrenda especial, pago de recibo de luz, compra de sillas..."
-                ></textarea>
+              <div class="mt-4 d-flex justify-content-end">
+                <button id="btnAddMovement" class="btn btn-success btn-lg px-4">
+                  <i class="fa-solid fa-plus me-1"></i>
+                  Agregar a la lista
+                </button>
               </div>
             </div>
+          </div>
+        </section>
 
-            <div class="mt-4 d-flex justify-content-end">
-              <button id="btnAddMovement" class="btn btn-success btn-lg px-4">
-                <i class="fa-solid fa-plus me-1"></i>
-                Agregar a la lista
-              </button>
+        <!-- MOVIMIENTOS REGISTRADOS -->
+        <section aria-labelledby="movimientosRegistradosTitle">
+          <div class="card shadow-sm church-card">
+            <div class="card-header bg-white border-0">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center">
+                  <div class="icon-circle me-2">
+                    <i class="fa-solid fa-table-list text-primary"></i>
+                  </div>
+                  <div>
+                    <h5 id="movimientosRegistradosTitle" class="card-title mb-0">
+                      Movimientos registrados
+                    </h5>
+                    <p class="text-muted small mb-0">
+                      Listado de todos los ingresos y egresos capturados.
+                    </p>
+                  </div>
+                </div>
+                <!-- Toolbar -->
+                <div class="btn-toolbar gap-2" role="toolbar" aria-label="Toolbar">
+                  <button id="btnSaveCloud" class="btn btn-primary btn-sm" disabled>
+                    <i class="fa-solid fa-floppy-disk me-1"></i>
+                    Guardar en la nube
+                  </button>
+                  <button id="btnExportPDF" class="btn btn-outline-danger btn-sm" disabled>
+                    <i class="fa-solid fa-file-pdf me-1"></i>
+                    PDF
+                  </button>
+                  <button id="btnExportExcel" class="btn btn-outline-success btn-sm" disabled>
+                    <i class="fa-solid fa-file-excel me-1"></i>
+                    Excel
+                  </button>
+                  <button id="btnClearAll" class="btn btn-outline-secondary btn-sm" disabled>
+                    <i class="fa-solid fa-trash-can me-1"></i>
+                    Limpiar todo
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body border-top">
+              <div class="table-responsive table-movimientos-wrapper">
+                <table class="table table-sm table-bordered align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="text-center" style="width: 48px;">#</th>
+                      <th class="text-nowrap">Fecha</th>
+                      <th class="text-nowrap">Evento</th>
+                      <th class="text-nowrap">Tipo</th>
+                      <th class="text-nowrap">Categoría</th>
+                      <th class="text-nowrap text-end">Monto</th>
+                      <th class="text-nowrap">Descripción</th>
+                      <th class="text-center text-nowrap" style="width: 80px;">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="movementsBody">
+                    <!-- Filas dinámicas -->
+                  </tbody>
+                </table>
+              </div>
+              <div class="mt-3 small text-muted d-flex align-items-center gap-2">
+                <i class="fa-regular fa-circle-question"></i>
+                <span>
+                  Los totales del resumen se actualizan automáticamente al agregar, eliminar o filtrar movimientos.
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Movimientos registrados -->
-        <div class="card shadow-sm">
-          <div class="card-header bg-white border-0">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <div>
-                <h5 class="card-title mb-0 d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-table-list text-primary"></i>
-                  Movimientos registrados
-                </h5>
-                <p class="text-muted small mb-0">
-                  Aquí se muestran todos los ingresos y egresos registrados.
-                </p>
-              </div>
-              <div class="btn-toolbar gap-2" role="toolbar">
-                <button id="btnSaveCloud" class="btn btn-primary btn-sm" disabled>
-                  <i class="fa-solid fa-floppy-disk me-1"></i>
-                  Guardar en la nube
-                </button>
-                <button id="btnExportPDF" class="btn btn-outline-danger btn-sm" disabled>
-                  <i class="fa-solid fa-file-pdf me-1"></i>
-                  PDF
-                </button>
-                <button id="btnExportExcel" class="btn btn-outline-success btn-sm" disabled>
-                  <i class="fa-solid fa-file-excel me-1"></i>
-                  Excel
-                </button>
-                <button id="btnClearAll" class="btn btn-outline-secondary btn-sm" disabled>
-                  <i class="fa-solid fa-trash-can me-1"></i>
-                  Limpiar todo
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="card-body border-top">
-            <div class="table-responsive table-movimientos-wrapper">
-              <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th class="text-center" style="width: 48px;">#</th>
-                    <th class="text-nowrap">Fecha</th>
-                    <th class="text-nowrap">Evento</th>
-                    <th class="text-nowrap">Tipo</th>
-                    <th class="text-nowrap">Categoría</th>
-                    <th class="text-nowrap">Monto</th>
-                    <th class="text-nowrap">Descripción</th>
-                    <th class="text-center text-nowrap" style="width: 80px;">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody id="movementsBody">
-                  <!-- Filas dinámicas -->
-                </tbody>
-              </table>
-            </div>
-            <div class="mt-3 small text-muted">
-              Los totales del resumen se actualizan automáticamente al agregar, eliminar o filtrar movimientos.
-            </div>
-          </div>
-        </div>
       </div><!-- /col derecha -->
     </div><!-- /row -->
   </main>
